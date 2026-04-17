@@ -453,6 +453,50 @@
       margin-top: 2px;
     }
 
+    .train-chip {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      border: 1px solid #c7d9ea;
+      background: #eef6ff;
+      color: #0b4f75;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 1px 8px;
+      margin-right: 3px;
+    }
+
+    .train-heat-l1 {
+      background: #eef6ff;
+      border-color: #bfdbfe;
+      color: #1d4ed8;
+    }
+
+    .train-heat-l2 {
+      background: #fff7e0;
+      border-color: #fde68a;
+      color: #b45309;
+    }
+
+    .train-heat-l3 {
+      background: #ffebcc;
+      border-color: #fdba74;
+      color: #c2410c;
+    }
+
+    .train-heat-l4 {
+      background: #ffd8c2;
+      border-color: #fb923c;
+      color: #9a3412;
+    }
+
+    .train-heat-l5 {
+      background: #fee2e2;
+      border-color: #f87171;
+      color: #991b1b;
+      box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.18);
+    }
+
     .mono {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 12px;
@@ -487,25 +531,124 @@
     }
 
     .tl-item {
-      border-left: 3px solid #7dd3fc;
-      padding: 0 0 8px 9px;
+      border-left: 4px solid #93c5fd;
+      border: 1px solid #d9e7f3;
+      border-left-width: 4px;
+      border-radius: 10px;
+      background: #f8fbff;
+      padding: 8px 9px 8px 10px;
       margin: 0 0 10px;
     }
 
     .tl-item:last-child {
       margin-bottom: 0;
-      padding-bottom: 0;
+    }
+
+    .tl-time-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 4px;
     }
 
     .tl-time {
       font-weight: 700;
       color: #0f766e;
-      margin-bottom: 2px;
+      margin: 0;
+    }
+
+    .tl-hot {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 1px 8px;
+      border: 1px solid #cdd8e2;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.4;
+      white-space: nowrap;
+    }
+
+    .tl-hot-l1 {
+      background: #eef6ff;
+      color: #1d4ed8;
+      border-color: #bfdbfe;
+    }
+
+    .tl-hot-l2 {
+      background: #fff7e0;
+      color: #b45309;
+      border-color: #fde68a;
+    }
+
+    .tl-hot-l3 {
+      background: #ffebcc;
+      color: #c2410c;
+      border-color: #fdba74;
+    }
+
+    .tl-hot-l4 {
+      background: #ffd8c2;
+      color: #9a3412;
+      border-color: #fb923c;
+    }
+
+    .tl-hot-l5 {
+      background: #fee2e2;
+      color: #991b1b;
+      border-color: #f87171;
     }
 
     .tl-label {
       font-size: 13px;
       color: #2f4358;
+      margin-top: 2px;
+    }
+
+    .tl-label-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      margin-top: 3px;
+      flex-wrap: wrap;
+    }
+
+    .tl-label-text {
+      font-size: 13px;
+      color: #2f4358;
+    }
+
+    .tl-label-l4,
+    .tl-label-l5 {
+      color: #7f1d1d;
+      font-weight: 600;
+    }
+
+    .tl-l1 {
+      background: #f8fbff;
+      border-left-color: #93c5fd;
+    }
+
+    .tl-l2 {
+      background: #fff7e0;
+      border-left-color: #fbbf24;
+    }
+
+    .tl-l3 {
+      background: #ffebcc;
+      border-left-color: #fb923c;
+    }
+
+    .tl-l4 {
+      background: #ffd8c2;
+      border-left-color: #f97316;
+    }
+
+    .tl-l5 {
+      background: linear-gradient(125deg, #ffe4d6, #ffd0d0);
+      border-left-color: #ef4444;
+      box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.2);
     }
 
     .tl-empty {
@@ -647,7 +790,7 @@
             </div>
             <div>
               <label for="presaleDays">提前开售天数</label>
-              <input id="presaleDays" type="number" min="1" value="15" />
+              <input id="presaleDays" type="number" min="1" value="14" />
             </div>
           </div>
         </div>
@@ -986,7 +1129,7 @@
         maxPrice: els.maxPrice.value === '' ? null : Number(els.maxPrice.value),
         maxDuration: els.maxDuration.value === '' ? null : Number(els.maxDuration.value),
         sameStationMin: Math.max(0, Number(els.sameStationMin.value) || 0),
-        presaleDays: Math.max(1, Number(els.presaleDays.value) || 15),
+        presaleDays: Math.max(1, Number(els.presaleDays.value) || 14),
       };
     }
 
@@ -1074,7 +1217,7 @@
       return arr;
     }
 
-    function renderTable(plans) {
+    function renderTable(plans, trainHeatMap) {
       els.tbody.innerHTML = '';
       if (!plans.length) {
         const tr = document.createElement('tr');
@@ -1084,6 +1227,8 @@
       }
 
       plans.forEach((p, idx) => {
+        const heat1 = trainHeatMap.get(p.leg1.trainNo) || { level: 1 };
+        const heat2 = trainHeatMap.get(p.leg2.trainNo) || { level: 1 };
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${idx + 1}</td>
@@ -1100,8 +1245,8 @@
             <div>等待 ${p.wait} 分钟，要求 ≥ ${p.requiredTransfer} 分钟</div>
           </td>
           <td>
-            <div><b>${p.leg1.trainNo}</b> ${p.leg1.departStation} ${p.leg1.departTime} → ${p.leg1.arriveStation} ${p.leg1.arriveTime}</div>
-            <div><b>${p.leg2.trainNo}</b> ${p.leg2.departStation} ${p.leg2.departTime} → ${p.leg2.arriveStation} ${p.leg2.arriveTime}</div>
+            <div><span class="train-chip train-heat-l${heat1.level}">${p.leg1.trainNo}</span>${p.leg1.departStation} ${p.leg1.departTime} → ${p.leg1.arriveStation} ${p.leg1.arriveTime}</div>
+            <div><span class="train-chip train-heat-l${heat2.level}">${p.leg2.trainNo}</span>${p.leg2.departStation} ${p.leg2.departTime} → ${p.leg2.arriveStation} ${p.leg2.arriveTime}</div>
           </td>
         `;
         els.tbody.appendChild(tr);
@@ -1148,7 +1293,33 @@
       );
     }
 
-    function renderCriticalBoard(plans, topN) {
+    function getHeatLevel(count, maxCount) {
+      if (!Number.isFinite(count) || !Number.isFinite(maxCount) || maxCount <= 0) return 1;
+      const level = Math.round((count / maxCount) * 4) + 1;
+      return Math.max(1, Math.min(5, level));
+    }
+
+    function heatText(level) {
+      if (level >= 5) return '优先抢';
+      if (level === 4) return '高热';
+      if (level === 3) return '重点';
+      if (level === 2) return '关注';
+      return '一般';
+    }
+
+    function buildTrainHeatMap(stats) {
+      const maxCount = stats.length ? stats[0].count : 0;
+      const heatMap = new Map();
+      stats.forEach((row) => {
+        heatMap.set(row.trainNo, {
+          count: row.count,
+          level: getHeatLevel(row.count, maxCount),
+        });
+      });
+      return heatMap;
+    }
+
+    function renderCriticalBoard(plans, topN, statsCache) {
       els.criticalList.innerHTML = '';
       if (!plans.length) {
         els.criticalMeta.textContent = '当前筛选下无可行方案，无法计算关键班次。';
@@ -1159,14 +1330,14 @@
         return;
       }
 
-      const stats = computeCriticalTrains(plans);
+      const stats = Array.isArray(statsCache) ? statsCache : computeCriticalTrains(plans);
       const visibleCount = Math.min(stats.length, Math.max(6, Number(topN) * 2));
       const visible = stats.slice(0, visibleCount);
       const maxCount = visible.length ? visible[0].count : 0;
       els.criticalMeta.textContent = `基于当前筛选的 ${plans.length} 条可行方案，展示重合度最高的 ${visibleCount} 个班次。`;
 
       visible.forEach((row, idx) => {
-        const level = Math.max(1, Math.round((row.count / Math.max(1, maxCount)) * 4) + 1);
+        const level = getHeatLevel(row.count, maxCount);
         const percent = ((row.count / plans.length) * 100).toFixed(0);
         const item = document.createElement('div');
         item.className = `critical-item critical-l${level}${idx === 0 ? ' is-hottest' : ''}`;
@@ -1197,8 +1368,10 @@
       for (const e of events) {
         if (!Number.isFinite(e.timeMin)) continue;
         const key = String(e.timeMin);
-        if (!groupMap.has(key)) groupMap.set(key, { timeMin: e.timeMin, labels: [] });
-        groupMap.get(key).labels.push(e.label);
+        if (!groupMap.has(key)) groupMap.set(key, { timeMin: e.timeMin, entries: [] });
+        const row = groupMap.get(key);
+        const level = Number.isFinite(e.level) ? e.level : 1;
+        row.entries.push({ label: e.label, level });
       }
       return [...groupMap.values()].sort((a, b) => a.timeMin - b.timeMin);
     }
@@ -1225,23 +1398,36 @@
         const item = document.createElement('div');
         item.className = 'tl-item';
 
+        const timeRow = document.createElement('div');
+        timeRow.className = 'tl-time-row';
         const time = document.createElement('div');
         time.className = 'tl-time';
         time.textContent = g.timeText;
-        item.appendChild(time);
+        timeRow.appendChild(time);
+        item.appendChild(timeRow);
 
-        g.labels.forEach((txt) => {
-          const label = document.createElement('div');
-          label.className = 'tl-label';
-          label.textContent = txt;
-          item.appendChild(label);
+        g.entries.forEach((entry) => {
+          const row = document.createElement('div');
+          row.className = 'tl-label-row';
+
+          const badge = document.createElement('span');
+          badge.className = `tl-hot tl-hot-l${entry.level || 1}`;
+          badge.textContent = heatText(entry.level || 1);
+          row.appendChild(badge);
+
+          const label = document.createElement('span');
+          label.className = `tl-label-text tl-label-l${entry.level || 1}`;
+          label.textContent = entry.label;
+          row.appendChild(label);
+
+          item.appendChild(row);
         });
 
         container.appendChild(item);
       });
     }
 
-    function renderTimelines(topPlans, params) {
+    function renderTimelines(topPlans, params, trainHeatMap) {
       const outSaleDate = dateMinusDays(els.outboundDate.value, params.presaleDays);
       const outDateText = outSaleDate ? fmtDate(outSaleDate) : '--';
       els.outboundTimelineTitle.textContent = `出发日抢票轨道（开售日：${outDateText}）`;
@@ -1252,17 +1438,21 @@
         const n = idx + 1;
         const sale1 = toMin(p.leg1.saleTime);
         const sale2 = toMin(p.leg2.saleTime);
+        const heat1 = trainHeatMap.get(p.leg1.trainNo) || { count: 0, level: 1 };
+        const heat2 = trainHeatMap.get(p.leg2.trainNo) || { count: 0, level: 1 };
 
         if (Number.isFinite(sale1)) {
           outboundEvents.push({
             timeMin: sale1,
             label: `方案#${n} 第1段：${p.leg1.departStation}→${p.leg1.arriveStation}（${p.leg1.trainNo}）`,
+            level: heat1.level,
           });
         }
         if (Number.isFinite(sale2)) {
           outboundEvents.push({
             timeMin: sale2,
             label: `方案#${n} 第2段：${p.leg2.departStation}→${p.leg2.arriveStation}（${p.leg2.trainNo}）`,
+            level: heat2.level,
           });
         }
       });
@@ -1308,9 +1498,11 @@
       els.sTopDuration.textContent = top.length ? fmtDuration(top[0].totalDuration) : '-';
       els.sTopArrival.textContent = top.length ? minToHHMM(top[0].arriveMin) : '-';
 
-      renderCriticalBoard(sorted, params.topN);
-      renderTable(top);
-      renderTimelines(top, params);
+      const criticalStats = computeCriticalTrains(sorted);
+      const trainHeatMap = buildTrainHeatMap(criticalStats);
+      renderCriticalBoard(sorted, params.topN, criticalStats);
+      renderTable(top, trainHeatMap);
+      renderTimelines(top, params, trainHeatMap);
     }
 
     function resetDefaults() {
@@ -1321,7 +1513,7 @@
       els.maxDuration.value = '';
       els.sameStationMin.value = 15;
       els.outboundDate.value = '2026-05-01';
-      els.presaleDays.value = 15;
+      els.presaleDays.value = 14;
       state.selectedCities = new Set(transferCities);
       state.transferMinutes = { ...DEFAULT_TRANSFER_MINUTES };
       state.sortPriorities = ['duration', 'price', 'arrival', 'wait'];
