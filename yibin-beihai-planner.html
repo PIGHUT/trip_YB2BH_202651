@@ -1367,13 +1367,52 @@
       const groupMap = new Map();
       for (const e of events) {
         if (!Number.isFinite(e.timeMin)) continue;
-        const key = String(e.timeMin);
-        if (!groupMap.has(key)) groupMap.set(key, { timeMin: e.timeMin, entries: [] });
-        const row = groupMap.get(key);
-        const level = Number.isFinite(e.level) ? e.level : 1;
-        row.entries.push({ label: e.label, level });
+        const timeKey = String(e.timeMin);
+        if (!groupMap.has(timeKey)) groupMap.set(timeKey, { timeMin: e.timeMin, mergeMap: new Map() });
+        const row = groupMap.get(timeKey);
+
+        const mergeKey = e.mergeKey || `${e.fromStation || ''}|${e.trainNo || ''}`;
+        if (!row.mergeMap.has(mergeKey)) {
+          row.mergeMap.set(mergeKey, {
+            fromStation: e.fromStation || '',
+            toStations: new Set(),
+            trainNo: e.trainNo || '',
+            level: Number.isFinite(e.level) ? e.level : 1,
+            segments: new Set(),
+            planNos: new Set(),
+            firstPlanNo: Number.isFinite(e.planNo) ? e.planNo : 9999,
+          });
+        }
+
+        const merged = row.mergeMap.get(mergeKey);
+        if (e.toStation) merged.toStations.add(e.toStation);
+        if (e.segment) merged.segments.add(e.segment);
+        if (Number.isFinite(e.planNo)) {
+          merged.planNos.add(e.planNo);
+          if (e.planNo < merged.firstPlanNo) merged.firstPlanNo = e.planNo;
+        }
+        if (Number.isFinite(e.level) && e.level > merged.level) merged.level = e.level;
       }
-      return [...groupMap.values()].sort((a, b) => a.timeMin - b.timeMin);
+
+      return [...groupMap.values()]
+        .sort((a, b) => a.timeMin - b.timeMin)
+        .map((g) => {
+          const entries = [...g.mergeMap.values()]
+            .sort((a, b) => (b.level - a.level) || (a.firstPlanNo - b.firstPlanNo))
+            .map((m) => {
+              const toText = [...m.toStations].join('/');
+              const segmentText = [...m.segments].sort().join('/');
+              const planText = [...m.planNos].sort((x, y) => x - y).map((n) => `#${n}`).join('、');
+              const main = `${m.fromStation}→${toText}（${m.trainNo}）`;
+              const segPrefix = segmentText ? `${segmentText}：` : '';
+              const planSuffix = planText ? `（方案${planText}）` : '';
+              return {
+                label: `${segPrefix}${main}${planSuffix}`,
+                level: m.level,
+              };
+            });
+          return { timeMin: g.timeMin, entries };
+        });
     }
 
     function renderOneTimeline(container, groups, emptyText, noteText) {
@@ -1444,14 +1483,24 @@
         if (Number.isFinite(sale1)) {
           outboundEvents.push({
             timeMin: sale1,
-            label: `方案#${n} 第1段：${p.leg1.departStation}→${p.leg1.arriveStation}（${p.leg1.trainNo}）`,
+            mergeKey: `${p.leg1.departStation}|${p.leg1.trainNo}`,
+            fromStation: p.leg1.departStation,
+            toStation: p.leg1.arriveStation,
+            trainNo: p.leg1.trainNo,
+            segment: '第1段',
+            planNo: n,
             level: heat1.level,
           });
         }
         if (Number.isFinite(sale2)) {
           outboundEvents.push({
             timeMin: sale2,
-            label: `方案#${n} 第2段：${p.leg2.departStation}→${p.leg2.arriveStation}（${p.leg2.trainNo}）`,
+            mergeKey: `${p.leg2.departStation}|${p.leg2.trainNo}`,
+            fromStation: p.leg2.departStation,
+            toStation: p.leg2.arriveStation,
+            trainNo: p.leg2.trainNo,
+            segment: '第2段',
+            planNo: n,
             level: heat2.level,
           });
         }
