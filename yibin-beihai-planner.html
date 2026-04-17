@@ -324,6 +324,15 @@
       box-shadow: 0 8px 18px rgba(30, 64, 175, 0.12);
     }
 
+    .critical-item.is-linkable {
+      cursor: pointer;
+    }
+
+    .critical-item.is-linkable:focus-visible {
+      outline: 2px solid #0284c7;
+      outline-offset: 2px;
+    }
+
     .critical-rank {
       font-size: 17px;
       font-weight: 800;
@@ -439,6 +448,11 @@
 
     tr:hover td {
       background: #f9fdff;
+    }
+
+    tr.plan-row-active td {
+      background: #fff2cc !important;
+      box-shadow: inset 0 0 0 1px #f59e0b;
     }
 
     .badge {
@@ -614,6 +628,21 @@
       flex-wrap: wrap;
     }
 
+    .tl-label-row.is-linkable {
+      cursor: pointer;
+      border-radius: 8px;
+      padding: 2px 4px;
+    }
+
+    .tl-label-row.is-linkable:hover {
+      background: rgba(2, 132, 199, 0.08);
+    }
+
+    .tl-label-row.is-linkable:focus-visible {
+      outline: 2px solid #0284c7;
+      outline-offset: 1px;
+    }
+
     .tl-label-text {
       font-size: 13px;
       color: #2f4358;
@@ -758,14 +787,6 @@
           <div class="stat"><b id="sTopArrival">-</b>Top1 到达</div>
         </div>
 
-        <div class="critical-board">
-          <div class="critical-head">
-            <h3>关键班次榜单（实时）</h3>
-            <div class="muted" id="criticalMeta">按当前筛选自动计算</div>
-          </div>
-          <div id="criticalList" class="critical-list"></div>
-        </div>
-
         <div class="table-wrap">
           <table>
             <thead>
@@ -800,6 +821,14 @@
             <h3 id="outboundTimelineTitle">出发日抢票轨道</h3>
             <div id="outboundTimeline"></div>
           </div>
+        </div>
+
+        <div class="critical-board">
+          <div class="critical-head">
+            <h3>关键班次榜单</h3>
+            <div class="muted" id="criticalMeta">按当前显示方案自动计算</div>
+          </div>
+          <div id="criticalList" class="critical-list"></div>
         </div>
       </main>
     </div>
@@ -1217,6 +1246,32 @@
       return arr;
     }
 
+    function normalizePlanNos(planNos) {
+      const nums = Array.isArray(planNos) ? planNos : [];
+      return [...new Set(nums.filter((n) => Number.isFinite(n) && n > 0))]
+        .sort((a, b) => a - b);
+    }
+
+    function focusPlans(planNos) {
+      const normalized = normalizePlanNos(planNos);
+      document.querySelectorAll('#tbody tr.plan-row-active').forEach((tr) => {
+        tr.classList.remove('plan-row-active');
+      });
+      if (!normalized.length) return;
+
+      let firstRow = null;
+      normalized.forEach((n) => {
+        const row = document.getElementById(`plan-row-${n}`);
+        if (!row) return;
+        row.classList.add('plan-row-active');
+        if (!firstRow) firstRow = row;
+      });
+
+      if (firstRow) {
+        firstRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
     function renderTable(plans, trainHeatMap) {
       els.tbody.innerHTML = '';
       if (!plans.length) {
@@ -1230,6 +1285,8 @@
         const heat1 = trainHeatMap.get(p.leg1.trainNo) || { level: 1 };
         const heat2 = trainHeatMap.get(p.leg2.trainNo) || { level: 1 };
         const tr = document.createElement('tr');
+        tr.id = `plan-row-${idx + 1}`;
+        tr.dataset.planNo = String(idx + 1);
         tr.innerHTML = `
           <td>${idx + 1}</td>
           <td>¥${p.totalPrice.toFixed(1)}</td>
@@ -1255,7 +1312,8 @@
 
     function computeCriticalTrains(plans) {
       const map = new Map();
-      plans.forEach((p) => {
+      plans.forEach((p, idx) => {
+        const planNo = idx + 1;
         const legs = [p.leg1, p.leg2];
         const countedInThisPlan = new Set();
         legs.forEach((leg) => {
@@ -1271,11 +1329,15 @@
               arriveStation: leg.arriveStation || '',
               saleTime: leg.saleTime || '',
               saleMin: toMin(leg.saleTime),
+              planNos: new Set(),
+              firstPlanNo: planNo,
             });
           }
 
           const row = map.get(trainNo);
           row.count += 1;
+          row.planNos.add(planNo);
+          if (planNo < row.firstPlanNo) row.firstPlanNo = planNo;
           const currentSaleMin = toMin(leg.saleTime);
           if (Number.isFinite(currentSaleMin)) {
             if (!Number.isFinite(row.saleMin) || currentSaleMin < row.saleMin) {
@@ -1288,9 +1350,13 @@
 
       return [...map.values()].sort((a, b) =>
         (b.count - a.count) ||
+        (a.firstPlanNo - b.firstPlanNo) ||
         ((a.saleMin ?? 1e9) - (b.saleMin ?? 1e9)) ||
         a.trainNo.localeCompare(b.trainNo, 'zh-Hans-CN')
-      );
+      ).map((row) => ({
+        ...row,
+        planNos: normalizePlanNos([...row.planNos]),
+      }));
     }
 
     function getHeatLevel(count, maxCount) {
@@ -1322,7 +1388,7 @@
     function renderCriticalBoard(plans, topN, statsCache) {
       els.criticalList.innerHTML = '';
       if (!plans.length) {
-        els.criticalMeta.textContent = '当前筛选下无可行方案，无法计算关键班次。';
+        els.criticalMeta.textContent = '当前显示方案为空，无法计算关键班次。';
         const empty = document.createElement('div');
         empty.className = 'tl-empty';
         empty.textContent = '先放宽筛选或补充同城异站时间后，再查看关键班次。';
@@ -1331,14 +1397,17 @@
       }
 
       const stats = Array.isArray(statsCache) ? statsCache : computeCriticalTrains(plans);
-      const visibleCount = Math.min(stats.length, Math.max(6, Number(topN) * 2));
+      const visibleCount = Math.min(stats.length, Math.max(1, Number(topN) || 1) * 2);
       const visible = stats.slice(0, visibleCount);
       const maxCount = visible.length ? visible[0].count : 0;
-      els.criticalMeta.textContent = `基于当前筛选的 ${plans.length} 条可行方案，展示重合度最高的 ${visibleCount} 个班次。`;
+      els.criticalMeta.textContent = `基于当前显示的 ${plans.length} 条方案，展示重合度最高的 ${visibleCount} 个班次。`;
 
       visible.forEach((row, idx) => {
         const level = getHeatLevel(row.count, maxCount);
         const percent = ((row.count / plans.length) * 100).toFixed(0);
+        const planText = row.planNos && row.planNos.length
+          ? row.planNos.map((n) => `#${n}`).join('、')
+          : '';
         const item = document.createElement('div');
         item.className = `critical-item critical-l${level}${idx === 0 ? ' is-hottest' : ''}`;
 
@@ -1355,10 +1424,23 @@
 
         const sub = document.createElement('div');
         sub.className = 'critical-sub';
-        sub.textContent = `方案重合 ${row.count} 次（覆盖 ${percent}%） · 起售 ${row.saleTime || '--'}`;
+        sub.textContent = `方案重合 ${row.count} 次（覆盖 ${percent}%） · 起售 ${row.saleTime || '--'}${planText ? ` · 关联方案${planText}` : ''}`;
         right.appendChild(sub);
 
         item.appendChild(right);
+        if (row.planNos && row.planNos.length) {
+          item.classList.add('is-linkable');
+          item.tabIndex = 0;
+          item.title = `点击定位到方案${planText}`;
+          const onJump = () => focusPlans(row.planNos);
+          item.addEventListener('click', onJump);
+          item.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter' || ev.key === ' ') {
+              ev.preventDefault();
+              onJump();
+            }
+          });
+        }
         els.criticalList.appendChild(item);
       });
     }
@@ -1402,13 +1484,15 @@
             .map((m) => {
               const toText = [...m.toStations].join('/');
               const segmentText = [...m.segments].sort().join('/');
-              const planText = [...m.planNos].sort((x, y) => x - y).map((n) => `#${n}`).join('、');
+              const planNos = normalizePlanNos([...m.planNos]);
+              const planText = planNos.map((n) => `#${n}`).join('、');
               const main = `${m.fromStation}→${toText}（${m.trainNo}）`;
               const segPrefix = segmentText ? `${segmentText}：` : '';
               const planSuffix = planText ? `（方案${planText}）` : '';
               return {
                 label: `${segPrefix}${main}${planSuffix}`,
                 level: m.level,
+                planNos,
               };
             });
           return { timeMin: g.timeMin, entries };
@@ -1448,6 +1532,20 @@
         g.entries.forEach((entry) => {
           const row = document.createElement('div');
           row.className = 'tl-label-row';
+          const entryPlanNos = normalizePlanNos(entry.planNos);
+          if (entryPlanNos.length) {
+            row.classList.add('is-linkable');
+            row.tabIndex = 0;
+            row.title = `点击定位到方案${entryPlanNos.map((n) => `#${n}`).join('、')}`;
+            const onJump = () => focusPlans(entryPlanNos);
+            row.addEventListener('click', onJump);
+            row.addEventListener('keydown', (ev) => {
+              if (ev.key === 'Enter' || ev.key === ' ') {
+                ev.preventDefault();
+                onJump();
+              }
+            });
+          }
 
           const badge = document.createElement('span');
           badge.className = `tl-hot tl-hot-l${entry.level || 1}`;
@@ -1547,9 +1645,9 @@
       els.sTopDuration.textContent = top.length ? fmtDuration(top[0].totalDuration) : '-';
       els.sTopArrival.textContent = top.length ? minToHHMM(top[0].arriveMin) : '-';
 
-      const criticalStats = computeCriticalTrains(sorted);
+      const criticalStats = computeCriticalTrains(top);
       const trainHeatMap = buildTrainHeatMap(criticalStats);
-      renderCriticalBoard(sorted, params.topN, criticalStats);
+      renderCriticalBoard(top, params.topN, criticalStats);
       renderTable(top, trainHeatMap);
       renderTimelines(top, params, trainHeatMap);
     }
