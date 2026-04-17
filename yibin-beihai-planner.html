@@ -814,6 +814,12 @@
               <input id="presaleDays" type="number" min="1" value="14" />
             </div>
           </div>
+          <div class="row single">
+            <div>
+              <label for="timelineNotBefore">轨道仅显示不早于</label>
+              <input id="timelineNotBefore" type="time" value="00:00" />
+            </div>
+          </div>
         </div>
 
         <div class="timeline-grid">
@@ -1020,6 +1026,7 @@
       resetBtn: document.getElementById('resetBtn'),
       outboundDate: document.getElementById('outboundDate'),
       presaleDays: document.getElementById('presaleDays'),
+      timelineNotBefore: document.getElementById('timelineNotBefore'),
       outboundTimelineTitle: document.getElementById('outboundTimelineTitle'),
       outboundTimeline: document.getElementById('outboundTimeline'),
       missingAlert: document.getElementById('missingAlert'),
@@ -1159,6 +1166,7 @@
         maxDuration: els.maxDuration.value === '' ? null : Number(els.maxDuration.value),
         sameStationMin: Math.max(0, Number(els.sameStationMin.value) || 0),
         presaleDays: Math.max(1, Number(els.presaleDays.value) || 14),
+        timelineNotBeforeMin: toMin(els.timelineNotBefore.value),
       };
     }
 
@@ -1567,7 +1575,10 @@
     function renderTimelines(topPlans, params, trainHeatMap) {
       const outSaleDate = dateMinusDays(els.outboundDate.value, params.presaleDays);
       const outDateText = outSaleDate ? fmtDate(outSaleDate) : '--';
-      els.outboundTimelineTitle.textContent = `出发日抢票轨道（开售日：${outDateText}）`;
+      const filterText = Number.isFinite(params.timelineNotBeforeMin)
+        ? `，过滤 ${minToHHMM(params.timelineNotBeforeMin)} 前`
+        : '';
+      els.outboundTimelineTitle.textContent = `出发日抢票轨道（开售日：${outDateText}${filterText}）`;
 
       const outboundEvents = [];
 
@@ -1604,15 +1615,21 @@
         }
       });
 
-      const groupedOut = groupTimelineEvents(outboundEvents).map((g) => ({
+      const filteredEvents = Number.isFinite(params.timelineNotBeforeMin)
+        ? outboundEvents.filter((e) => e.timeMin >= params.timelineNotBeforeMin)
+        : outboundEvents;
+      const groupedOut = groupTimelineEvents(filteredEvents).map((g) => ({
         ...g,
         timeText: `${outDateText} ${minToHHMM(g.timeMin)}`,
       }));
+      const emptyText = Number.isFinite(params.timelineNotBeforeMin)
+        ? `暂无事件。请先筛出可行 TopN 方案，或下调时间筛选（当前不早于 ${minToHHMM(params.timelineNotBeforeMin)}）。`
+        : '暂无事件。请先筛出可行 TopN 方案。';
 
       renderOneTimeline(
         els.outboundTimeline,
         groupedOut,
-        '暂无事件。请先筛出可行 TopN 方案。'
+        emptyText
       );
     }
 
@@ -1661,6 +1678,7 @@
       els.sameStationMin.value = 15;
       els.outboundDate.value = '2026-05-01';
       els.presaleDays.value = 14;
+      els.timelineNotBefore.value = '00:00';
       state.selectedCities = new Set(transferCities);
       state.transferMinutes = { ...DEFAULT_TRANSFER_MINUTES };
       state.sortPriorities = ['duration', 'price', 'arrival', 'wait'];
@@ -1684,6 +1702,7 @@
         'sameStationMin',
         'outboundDate',
         'presaleDays',
+        'timelineNotBefore',
       ]
         .forEach((id) => {
           els[id].addEventListener('change', render);
@@ -1693,7 +1712,8 @@
               id === 'maxPrice' ||
               id === 'maxDuration' ||
               id === 'sameStationMin' ||
-              id === 'presaleDays'
+              id === 'presaleDays' ||
+              id === 'timelineNotBefore'
             ) {
               render();
             }
