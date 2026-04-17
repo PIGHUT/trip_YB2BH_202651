@@ -1,0 +1,1228 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>宜宾 → 北海 五一换乘规划器</title>
+  <style>
+    :root {
+      --bg-1: #f5fbff;
+      --bg-2: #fff6ef;
+      --card: #ffffff;
+      --ink: #1f2a37;
+      --sub: #4b5d73;
+      --line: #d6e2ef;
+      --brand: #00897b;
+      --brand-2: #ffa000;
+      --ok: #0f9d58;
+      --warn: #d93025;
+      --shadow: 0 10px 30px rgba(20, 64, 91, 0.08);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 500px at 10% -10%, #d4efff 0, transparent 55%),
+        radial-gradient(1200px 500px at 90% -20%, #ffe7cb 0, transparent 50%),
+        linear-gradient(180deg, var(--bg-1), var(--bg-2));
+      font-family: "LXGW WenKai", "STKaiti", "Kaiti SC", "Hiragino Sans GB", "PingFang SC", sans-serif;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    .shell {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+    }
+
+    .hero {
+      background: linear-gradient(120deg, #0f766e, #2563eb 58%, #f59e0b);
+      color: #f8fbff;
+      border-radius: 24px;
+      padding: 22px 20px;
+      box-shadow: var(--shadow);
+      animation: rise 420ms ease-out;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(24px, 3.6vw, 36px);
+      letter-spacing: 1px;
+    }
+
+    .hero p {
+      margin: 8px 0 0;
+      opacity: 0.95;
+      font-size: 15px;
+    }
+
+    .grid {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    @media (min-width: 980px) {
+      .grid {
+        grid-template-columns: 360px 1fr;
+        align-items: start;
+      }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px;
+      animation: rise 460ms ease-out;
+    }
+
+    .card h2 {
+      margin: 0 0 8px;
+      font-size: 19px;
+      color: #0c4a6e;
+    }
+
+    .muted {
+      color: var(--sub);
+      font-size: 13px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .row.single {
+      grid-template-columns: 1fr;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: #24415f;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    input, select, button {
+      width: 100%;
+      border: 1px solid #b8cde2;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font: inherit;
+      color: var(--ink);
+      background: #fff;
+    }
+
+    input:focus, select:focus, button:focus {
+      outline: 2px solid #7dd3fc;
+      outline-offset: 1px;
+    }
+
+    input[type="checkbox"],
+    input[type="radio"] {
+      width: auto;
+      padding: 0;
+      border: none;
+      outline: none;
+      accent-color: #0284c7;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid #bfd9eb;
+      background: #f8fcff;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 13px;
+    }
+
+    .city-filter {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .city-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid #bfd9eb;
+      border-radius: 10px;
+      padding: 6px 8px;
+      background: #f8fcff;
+      font-size: 13px;
+    }
+
+    .city-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .sort-dnd {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .sort-block {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid #bfd9eb;
+      border-radius: 10px;
+      padding: 7px 10px;
+      background: #f8fcff;
+      font-size: 13px;
+      cursor: grab;
+      user-select: none;
+    }
+
+    .sort-block.dragging {
+      opacity: 0.45;
+      border-style: dashed;
+      background: #eef8ff;
+    }
+
+    .sort-order {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: #e0f2fe;
+      color: #0c4a6e;
+      font-weight: 700;
+      font-size: 12px;
+      border: 1px solid #b6def7;
+      flex: 0 0 auto;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .primary {
+      background: linear-gradient(120deg, #0d9488, #0284c7);
+      color: #fff;
+      border: none;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .ghost {
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .warning {
+      margin-top: 10px;
+      border: 1px dashed #fca5a5;
+      border-radius: 12px;
+      padding: 10px;
+      background: #fffaf9;
+      color: #8f2d2d;
+      font-size: 13px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    @media (min-width: 640px) {
+      .stats {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+    }
+
+    .stat {
+      border: 1px solid #cae4f7;
+      border-radius: 12px;
+      padding: 9px;
+      background: linear-gradient(180deg, #f8fdff, #f4fbff);
+    }
+
+    .stat b {
+      display: block;
+      font-size: 18px;
+      color: #0f172a;
+      margin-bottom: 1px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid #cce0ef;
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 920px;
+      font-size: 13px;
+    }
+
+    th, td {
+      border-bottom: 1px solid #e4eef7;
+      text-align: left;
+      vertical-align: top;
+      padding: 9px 10px;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #f4fbff;
+      color: #1e3a5f;
+      z-index: 1;
+    }
+
+    tr:hover td {
+      background: #f9fdff;
+    }
+
+    .badge {
+      display: inline-block;
+      border-radius: 999px;
+      background: #e6f8f3;
+      color: #0f766e;
+      border: 1px solid #a7f3d0;
+      font-size: 12px;
+      padding: 1px 8px;
+      margin-right: 4px;
+      margin-top: 2px;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .timeline-tools {
+      margin-top: 12px;
+      padding: 10px;
+      border: 1px solid #cde3f3;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #f9fdff, #f3fafe);
+    }
+
+    .timeline-grid {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    @media (min-width: 900px) {
+      .timeline-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .timeline {
+      border: 1px solid #d9e8f5;
+      border-radius: 12px;
+      background: #fff;
+      padding: 10px;
+    }
+
+    .timeline h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      color: #0d5e89;
+    }
+
+    .tl-item {
+      border-left: 3px solid #7dd3fc;
+      padding: 0 0 8px 9px;
+      margin: 0 0 10px;
+    }
+
+    .tl-item:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .tl-time {
+      font-weight: 700;
+      color: #0f766e;
+      margin-bottom: 2px;
+    }
+
+    .tl-label {
+      font-size: 13px;
+      color: #2f4358;
+    }
+
+    .tl-empty {
+      font-size: 13px;
+      color: #6b7280;
+      border: 1px dashed #cdd8e2;
+      border-radius: 10px;
+      padding: 8px;
+      background: #fbfdff;
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <h1>宜宾 → 北海 五一换乘规划器</h1>
+      <p>基于你提供的 12306 截图 + 夸克 OCR 对照结果，支持按最便宜、总耗时最短、到达最早筛选 TopN 方案。</p>
+    </section>
+
+    <div class="grid">
+      <aside class="card">
+        <h2>筛选设置</h2>
+        <div class="muted">当前逻辑：仅计算 1 次换乘（宜宾 → 中转城市 → 北海）。</div>
+
+        <div class="row single">
+          <div>
+            <label for="topN">显示方案数量</label>
+            <input id="topN" type="number" min="1" max="100" value="5" />
+          </div>
+        </div>
+
+        <div class="row single">
+          <div>
+            <label>多维排序优先级（从高到低）</label>
+            <div id="sortPriorityList" class="sort-dnd"></div>
+            <div class="muted" style="margin-top:6px;">拖拽方块调整顺序，左到右表示第 1 到第 4 优先级。</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="earliestDepart">最早出发不早于</label>
+            <input id="earliestDepart" type="time" value="00:00" />
+          </div>
+          <div>
+            <label for="latestArrival">最晚到达不晚于</label>
+            <input id="latestArrival" type="time" value="23:59" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="maxPrice">总价上限（可空）</label>
+            <input id="maxPrice" type="number" min="0" step="0.5" placeholder="例如 450" />
+          </div>
+          <div>
+            <label for="maxDuration">总耗时上限(分钟，可空)</label>
+            <input id="maxDuration" type="number" min="0" placeholder="例如 500" />
+          </div>
+        </div>
+
+        <div class="row single">
+          <div>
+            <label for="sameStationMin">同站换乘最少预留（分钟）</label>
+            <input id="sameStationMin" type="number" min="0" value="15" />
+          </div>
+        </div>
+
+        <div class="row single">
+          <div>
+            <label>城市筛选（不勾选则不参与）</label>
+            <div id="cityFilterList" class="city-filter"></div>
+            <div class="city-actions">
+              <button id="citySelectAllBtn" class="ghost" type="button">全选城市</button>
+              <button id="cityClearBtn" class="ghost" type="button">清空城市</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="runBtn">刷新方案</button>
+          <button class="ghost" id="resetBtn" type="button">恢复默认</button>
+        </div>
+
+        <div id="missingAlert" class="warning" style="display:none"></div>
+      </aside>
+
+      <main class="card">
+        <h2>方案结果</h2>
+        <div class="muted" id="meta"></div>
+
+        <div class="stats">
+          <div class="stat"><b id="sTotal">0</b>可行方案</div>
+          <div class="stat"><b id="sTopPrice">-</b>Top1 总价</div>
+          <div class="stat"><b id="sTopDuration">-</b>Top1 总耗时</div>
+          <div class="stat"><b id="sTopArrival">-</b>Top1 到达</div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>总价</th>
+                <th>总耗时</th>
+                <th>出发/到达</th>
+                <th>中转信息</th>
+                <th>车次组合</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+
+        <div class="timeline-tools">
+          <div class="row">
+            <div>
+              <label for="outboundDate">出发乘车日</label>
+              <input id="outboundDate" type="date" value="2026-05-01" />
+            </div>
+            <div>
+              <label for="returnDate">返程乘车日</label>
+              <input id="returnDate" type="date" value="2026-05-06" />
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="presaleDays">提前开售天数</label>
+              <input id="presaleDays" type="number" min="1" value="15" />
+            </div>
+            <div>
+              <label for="beihaiSaleTime">北海站起售时间（返程首段可选）</label>
+              <input id="beihaiSaleTime" type="time" />
+            </div>
+          </div>
+        </div>
+
+        <div class="timeline-grid">
+          <div class="timeline">
+            <h3 id="outboundTimelineTitle">出发日抢票轨道</h3>
+            <div id="outboundTimeline"></div>
+          </div>
+          <div class="timeline">
+            <h3 id="returnTimelineTitle">返程日抢票轨道</h3>
+            <div id="returnTimeline"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <section class="card" style="margin-top:14px;">
+      <h2>同城异站换乘时间补充</h2>
+      <div class="muted">只在中转城市出现“到达站 ≠ 下一程出发站”时需要填写。未填时，该组合会被自动排除。</div>
+      <div class="row" style="margin-top:10px;">
+        <div>
+          <label for="batchMin">批量默认分钟（用于快速填充）</label>
+          <input id="batchMin" type="number" min="0" placeholder="例如 40" />
+        </div>
+        <div style="display:flex; align-items:end; gap:8px;">
+          <button class="ghost" id="batchFillBtn" type="button">批量填充空白</button>
+        </div>
+      </div>
+      <div class="table-wrap" style="margin-top:10px;">
+        <table>
+          <thead>
+            <tr>
+              <th>中转城市</th>
+              <th>到达站 → 出发站</th>
+              <th>需预留分钟</th>
+            </tr>
+          </thead>
+          <tbody id="transferTimeBody"></tbody>
+        </table>
+      </div>
+      <div class="muted" style="margin-top:8px;">
+        提示：填写后点击“刷新方案”立即生效。
+      </div>
+    </section>
+  </div>
+
+  <script src="./yibin-beihai-data.js"></script>
+  <script>
+    const raw = (window.YIBIN_BEIHAI_DATA && window.YIBIN_BEIHAI_DATA.trips) || [];
+
+    const toMin = (hhmm) => {
+      if (!hhmm || typeof hhmm !== 'string') return null;
+      const m = hhmm.match(/^(\d{1,2}):(\d{2})$/);
+      if (!m) return null;
+      return Number(m[1]) * 60 + Number(m[2]);
+    };
+
+    const minToHHMM = (v) => {
+      const m = ((v % 1440) + 1440) % 1440;
+      const h = String(Math.floor(m / 60)).padStart(2, '0');
+      const mm = String(m % 60).padStart(2, '0');
+      return `${h}:${mm}`;
+    };
+
+    const fmtDuration = (min) => {
+      const h = Math.floor(min / 60);
+      const m = min % 60;
+      return `${h}小时${m}分`;
+    };
+
+    const parseDateInput = (s) => {
+      if (!s) return null;
+      const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return null;
+      const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0, 0);
+      if (Number.isNaN(d.getTime())) return null;
+      return d;
+    };
+
+    const fmtDate = (d) => {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
+    const dateMinusDays = (dateStr, days) => {
+      const d = parseDateInput(dateStr);
+      if (!d) return null;
+      d.setDate(d.getDate() - Number(days || 0));
+      return d;
+    };
+
+    const cityOf = (station) => {
+      if (!station) return '';
+      const s = String(station).trim();
+      const rules = ['东站', '西站', '南站', '北站', '站', '机场', '东', '西', '南', '北'];
+      for (const r of rules) {
+        if (s.endsWith(r) && s.length > r.length) {
+          return s.slice(0, -r.length);
+        }
+      }
+      return s;
+    };
+
+    const trips = raw.map((r) => ({
+      route: r['线路'],
+      departTime: r['出发时间'],
+      arriveTime: r['到达时间'],
+      departStation: r['出发站点'],
+      arriveStation: r['到达站点'],
+      trainNo: r['车号'],
+      saleTime: r['起售时间'],
+      rideDurationText: r['乘车时长'],
+      price: Number(r['价格(元)']),
+      source: r['截图文件'],
+      departMin: toMin(r['出发时间']),
+      arriveMin: toMin(r['到达时间']),
+      departCity: cityOf(r['出发站点']),
+      arriveCity: cityOf(r['到达站点']),
+    })).filter((r) => Number.isFinite(r.departMin) && Number.isFinite(r.arriveMin));
+
+    const DEFAULT_TRANSFER_MINUTES = {
+      '南宁东->南宁': 66,
+      '南宁北->南宁东': 170,
+      '南宁北->南宁': 136,
+      '南宁->南宁东': 69,
+      '桂林西->桂林北': 80,
+      '桂林西->桂林': 103,
+      '桂林北->桂林': 80,
+    };
+
+    const SORT_METRICS = ['duration', 'price', 'arrival', 'wait'];
+    const SORT_METRIC_LABEL = {
+      duration: '总时间最短',
+      price: '最便宜',
+      arrival: '到达最早',
+      wait: '换乘等待最短',
+    };
+
+    const leg1 = trips.filter((r) => r.departCity === '宜宾' && r.arriveCity !== '北海');
+    const leg2 = trips.filter((r) => r.arriveCity === '北海');
+
+    const leg2ByCity = new Map();
+    for (const t of leg2) {
+      if (!leg2ByCity.has(t.departCity)) leg2ByCity.set(t.departCity, []);
+      leg2ByCity.get(t.departCity).push(t);
+    }
+
+    const transferCities = [...new Set(leg1.map((x) => x.arriveCity))].filter((c) => leg2ByCity.has(c));
+
+    const transferPairMap = new Map();
+    const addTransferPair = (city, fromStation, toStation) => {
+      const key = `${fromStation}->${toStation}`;
+      if (!transferPairMap.has(key)) {
+        transferPairMap.set(key, { city, fromStation, toStation, key });
+      }
+    };
+
+    for (const a of leg1) {
+      const arrCity = a.arriveCity;
+      const nexts = leg2ByCity.get(arrCity) || [];
+      for (const b of nexts) {
+        if (a.arriveStation === b.departStation) continue;
+        addTransferPair(arrCity, a.arriveStation, b.departStation);
+      }
+    }
+
+    for (const key of Object.keys(DEFAULT_TRANSFER_MINUTES)) {
+      const [fromStation, toStation] = key.split('->');
+      addTransferPair(cityOf(fromStation), fromStation, toStation);
+    }
+
+    const transferPairs = [...transferPairMap.values()].sort((x, y) =>
+      (x.city || '').localeCompare(y.city || '', 'zh-Hans-CN') ||
+      x.fromStation.localeCompare(y.fromStation, 'zh-Hans-CN') ||
+      x.toStation.localeCompare(y.toStation, 'zh-Hans-CN')
+    );
+
+    const state = {
+      selectedCities: new Set(transferCities),
+      transferMinutes: { ...DEFAULT_TRANSFER_MINUTES },
+      sortPriorities: ['duration', 'price', 'arrival', 'wait'],
+    };
+
+    const els = {
+      topN: document.getElementById('topN'),
+      sortPriorityList: document.getElementById('sortPriorityList'),
+      earliestDepart: document.getElementById('earliestDepart'),
+      latestArrival: document.getElementById('latestArrival'),
+      maxPrice: document.getElementById('maxPrice'),
+      maxDuration: document.getElementById('maxDuration'),
+      sameStationMin: document.getElementById('sameStationMin'),
+      cityFilterList: document.getElementById('cityFilterList'),
+      citySelectAllBtn: document.getElementById('citySelectAllBtn'),
+      cityClearBtn: document.getElementById('cityClearBtn'),
+      transferTimeBody: document.getElementById('transferTimeBody'),
+      batchMin: document.getElementById('batchMin'),
+      batchFillBtn: document.getElementById('batchFillBtn'),
+      runBtn: document.getElementById('runBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      outboundDate: document.getElementById('outboundDate'),
+      returnDate: document.getElementById('returnDate'),
+      presaleDays: document.getElementById('presaleDays'),
+      beihaiSaleTime: document.getElementById('beihaiSaleTime'),
+      outboundTimelineTitle: document.getElementById('outboundTimelineTitle'),
+      returnTimelineTitle: document.getElementById('returnTimelineTitle'),
+      outboundTimeline: document.getElementById('outboundTimeline'),
+      returnTimeline: document.getElementById('returnTimeline'),
+      missingAlert: document.getElementById('missingAlert'),
+      meta: document.getElementById('meta'),
+      sTotal: document.getElementById('sTotal'),
+      sTopPrice: document.getElementById('sTopPrice'),
+      sTopDuration: document.getElementById('sTopDuration'),
+      sTopArrival: document.getElementById('sTopArrival'),
+      tbody: document.getElementById('tbody'),
+    };
+
+    function buildCityFilterOptions() {
+      els.cityFilterList.innerHTML = '';
+      transferCities.forEach((city) => {
+        const id = `city_${city}`;
+        const wrap = document.createElement('label');
+        wrap.className = 'city-option';
+        wrap.innerHTML = `<input id="${id}" type="checkbox" checked /><span>${city}</span>`;
+        const cb = wrap.querySelector('input');
+        cb.checked = state.selectedCities.has(city);
+        cb.addEventListener('change', () => {
+          if (cb.checked) state.selectedCities.add(city);
+          else state.selectedCities.delete(city);
+          render();
+        });
+        els.cityFilterList.appendChild(wrap);
+      });
+    }
+
+    function normalizeSortPriorities(priorities) {
+      const used = new Set();
+      const normalized = [];
+      const list = Array.isArray(priorities) ? priorities : [];
+
+      list.forEach((current) => {
+        if (SORT_METRICS.includes(current) && !used.has(current)) {
+          normalized.push(current);
+          used.add(current);
+        }
+      });
+
+      SORT_METRICS.forEach((metric) => {
+        if (!used.has(metric)) {
+          normalized.push(metric);
+          used.add(metric);
+        }
+      });
+
+      return normalized;
+    }
+
+    function renderSortPriorityList() {
+      if (!els.sortPriorityList) return;
+      state.sortPriorities = normalizeSortPriorities(state.sortPriorities);
+      els.sortPriorityList.innerHTML = '';
+
+      let draggingMetric = null;
+      state.sortPriorities.forEach((metric, idx) => {
+        const block = document.createElement('div');
+        block.className = 'sort-block';
+        block.draggable = true;
+        block.dataset.metric = metric;
+        block.innerHTML = `
+          <span class="sort-order">${idx + 1}</span>
+          <span>${SORT_METRIC_LABEL[metric] || metric}</span>
+        `;
+
+        block.addEventListener('dragstart', (e) => {
+          draggingMetric = metric;
+          block.classList.add('dragging');
+          if (e.dataTransfer) {
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', metric);
+          }
+        });
+
+        block.addEventListener('dragend', () => {
+          block.classList.remove('dragging');
+        });
+
+        block.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        });
+
+        block.addEventListener('drop', (e) => {
+          e.preventDefault();
+          const targetMetric = metric;
+          const sourceMetric = draggingMetric || (e.dataTransfer ? e.dataTransfer.getData('text/plain') : '');
+          if (!sourceMetric || sourceMetric === targetMetric) return;
+          const current = [...state.sortPriorities];
+          const from = current.indexOf(sourceMetric);
+          const to = current.indexOf(targetMetric);
+          if (from < 0 || to < 0) return;
+          current.splice(from, 1);
+          current.splice(to, 0, sourceMetric);
+          state.sortPriorities = current;
+          renderSortPriorityList();
+          render();
+        });
+
+        els.sortPriorityList.appendChild(block);
+      });
+    }
+
+    function buildTransferTimeTable() {
+      els.transferTimeBody.innerHTML = '';
+      transferPairs.forEach((p) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${p.city}</td>
+          <td><span class="mono">${p.fromStation} → ${p.toStation}</span></td>
+          <td><input type="number" min="0" data-key="${p.key}" placeholder="请填写分钟" /></td>
+        `;
+        const input = tr.querySelector('input');
+        const preset = state.transferMinutes[p.key];
+        if (Number.isFinite(preset)) input.value = String(preset);
+        input.addEventListener('input', () => {
+          const v = input.value.trim();
+          const n = Number(v);
+          if (!v || !Number.isFinite(n) || n < 0) delete state.transferMinutes[p.key];
+          else state.transferMinutes[p.key] = n;
+        });
+        els.transferTimeBody.appendChild(tr);
+      });
+    }
+
+    function collectParams() {
+      return {
+        topN: Math.max(1, Number(els.topN.value) || 5),
+        sortPriorities: normalizeSortPriorities(state.sortPriorities),
+        earliestDepart: toMin(els.earliestDepart.value),
+        latestArrival: toMin(els.latestArrival.value),
+        maxPrice: els.maxPrice.value === '' ? null : Number(els.maxPrice.value),
+        maxDuration: els.maxDuration.value === '' ? null : Number(els.maxDuration.value),
+        sameStationMin: Math.max(0, Number(els.sameStationMin.value) || 0),
+        presaleDays: Math.max(1, Number(els.presaleDays.value) || 15),
+      };
+    }
+
+    function computePlans(params) {
+      const plans = [];
+      const missingPairSet = new Set();
+
+      for (const a of leg1) {
+        if (!state.selectedCities.has(a.arriveCity)) continue;
+        if (params.earliestDepart != null && a.departMin < params.earliestDepart) continue;
+
+        const nexts = leg2ByCity.get(a.arriveCity) || [];
+        for (const b of nexts) {
+          if (params.latestArrival != null && b.arriveMin > params.latestArrival) continue;
+          if (b.departMin <= a.arriveMin) continue;
+
+          const sameStation = a.arriveStation === b.departStation;
+          const transferKey = `${a.arriveStation}->${b.departStation}`;
+          let requiredTransfer;
+          let transferType;
+
+          if (sameStation) {
+            requiredTransfer = params.sameStationMin;
+            transferType = '同站';
+          } else {
+            const custom = state.transferMinutes[transferKey];
+            if (!Number.isFinite(custom)) {
+              missingPairSet.add(transferKey);
+              continue;
+            }
+            requiredTransfer = Math.max(0, custom);
+            transferType = '同城异站';
+          }
+
+          const wait = b.departMin - a.arriveMin;
+          if (wait < requiredTransfer) continue;
+
+          let totalDuration = b.arriveMin - a.departMin;
+          if (totalDuration < 0) totalDuration += 1440;
+          const totalPrice = a.price + b.price;
+
+          if (params.maxPrice != null && totalPrice > params.maxPrice) continue;
+          if (params.maxDuration != null && totalDuration > params.maxDuration) continue;
+
+          plans.push({
+            leg1: a,
+            leg2: b,
+            transferCity: a.arriveCity,
+            transferType,
+            wait,
+            requiredTransfer,
+            totalDuration,
+            totalPrice,
+            departMin: a.departMin,
+            arriveMin: b.arriveMin,
+          });
+        }
+      }
+
+      return { plans, missingPairSet };
+    }
+
+    function sortPlans(plans, params) {
+      const arr = plans.slice();
+      const compareByMetric = {
+        duration: (x, y) => x.totalDuration - y.totalDuration,
+        price: (x, y) => x.totalPrice - y.totalPrice,
+        arrival: (x, y) => x.arriveMin - y.arriveMin,
+        wait: (x, y) => x.wait - y.wait,
+      };
+
+      const compareChain = (x, y, order) => {
+        for (const key of order) {
+          const fn = compareByMetric[key];
+          if (!fn) continue;
+          const diff = fn(x, y);
+          if (diff) return diff;
+        }
+        return 0;
+      };
+
+      const manual = (params.sortPriorities || []).filter((m) => SORT_METRICS.includes(m));
+      const order = [...new Set([...manual, ...SORT_METRICS])];
+      arr.sort((x, y) => compareChain(x, y, order));
+      return arr;
+    }
+
+    function renderTable(plans) {
+      els.tbody.innerHTML = '';
+      if (!plans.length) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="6" class="muted">当前筛选下没有可行方案。可放宽筛选条件或补充同城异站换乘时间。</td>`;
+        els.tbody.appendChild(tr);
+        return;
+      }
+
+      plans.forEach((p, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${idx + 1}</td>
+          <td>¥${p.totalPrice.toFixed(1)}</td>
+          <td>${fmtDuration(p.totalDuration)}</td>
+          <td>
+            <div><b>${p.leg1.departTime}</b> 宜宾出发</div>
+            <div><b>${p.leg2.arriveTime}</b> 北海到达</div>
+          </td>
+          <td>
+            <span class="badge">${p.transferType}</span>
+            <span class="badge">${p.transferCity}</span>
+            <div class="mono">${p.leg1.arriveStation} → ${p.leg2.departStation}</div>
+            <div>等待 ${p.wait} 分钟，要求 ≥ ${p.requiredTransfer} 分钟</div>
+          </td>
+          <td>
+            <div><b>${p.leg1.trainNo}</b> ${p.leg1.departStation} ${p.leg1.departTime} → ${p.leg1.arriveStation} ${p.leg1.arriveTime}</div>
+            <div><b>${p.leg2.trainNo}</b> ${p.leg2.departStation} ${p.leg2.departTime} → ${p.leg2.arriveStation} ${p.leg2.arriveTime}</div>
+          </td>
+        `;
+        els.tbody.appendChild(tr);
+      });
+    }
+
+    function groupTimelineEvents(events) {
+      const groupMap = new Map();
+      for (const e of events) {
+        if (!Number.isFinite(e.timeMin)) continue;
+        const key = String(e.timeMin);
+        if (!groupMap.has(key)) groupMap.set(key, { timeMin: e.timeMin, labels: [] });
+        groupMap.get(key).labels.push(e.label);
+      }
+      return [...groupMap.values()].sort((a, b) => a.timeMin - b.timeMin);
+    }
+
+    function renderOneTimeline(container, groups, emptyText, noteText) {
+      container.innerHTML = '';
+
+      if (noteText) {
+        const note = document.createElement('div');
+        note.className = 'tl-empty';
+        note.textContent = noteText;
+        container.appendChild(note);
+      }
+
+      if (!groups.length) {
+        const empty = document.createElement('div');
+        empty.className = 'tl-empty';
+        empty.textContent = emptyText;
+        container.appendChild(empty);
+        return;
+      }
+
+      groups.forEach((g) => {
+        const item = document.createElement('div');
+        item.className = 'tl-item';
+
+        const time = document.createElement('div');
+        time.className = 'tl-time';
+        time.textContent = g.timeText;
+        item.appendChild(time);
+
+        g.labels.forEach((txt) => {
+          const label = document.createElement('div');
+          label.className = 'tl-label';
+          label.textContent = txt;
+          item.appendChild(label);
+        });
+
+        container.appendChild(item);
+      });
+    }
+
+    function renderTimelines(topPlans, params) {
+      const outSaleDate = dateMinusDays(els.outboundDate.value, params.presaleDays);
+      const retSaleDate = dateMinusDays(els.returnDate.value, params.presaleDays);
+      const outDateText = outSaleDate ? fmtDate(outSaleDate) : '--';
+      const retDateText = retSaleDate ? fmtDate(retSaleDate) : '--';
+      els.outboundTimelineTitle.textContent = `出发日抢票轨道（开售日：${outDateText}）`;
+      els.returnTimelineTitle.textContent = `返程日抢票轨道（开售日：${retDateText}）`;
+
+      const outboundEvents = [];
+      const returnEvents = [];
+      const beihaiSaleMin = toMin(els.beihaiSaleTime.value);
+
+      topPlans.forEach((p, idx) => {
+        const n = idx + 1;
+        const sale1 = toMin(p.leg1.saleTime);
+        const sale2 = toMin(p.leg2.saleTime);
+
+        if (Number.isFinite(sale1)) {
+          outboundEvents.push({
+            timeMin: sale1,
+            label: `方案#${n} 第1段：${p.leg1.departStation}→${p.leg1.arriveStation}（${p.leg1.trainNo}）`,
+          });
+        }
+        if (Number.isFinite(sale2)) {
+          outboundEvents.push({
+            timeMin: sale2,
+            label: `方案#${n} 第2段：${p.leg2.departStation}→${p.leg2.arriveStation}（${p.leg2.trainNo}）`,
+          });
+          returnEvents.push({
+            timeMin: sale2,
+            label: `方案#${n} 返程第2段：${p.leg2.departStation}→宜宾（中转段优先）`,
+          });
+        }
+        if (Number.isFinite(beihaiSaleMin)) {
+          returnEvents.push({
+            timeMin: beihaiSaleMin,
+            label: `方案#${n} 返程第1段：北海→${p.transferCity}（需按实际车次确认）`,
+          });
+        }
+      });
+
+      const groupedOut = groupTimelineEvents(outboundEvents).map((g) => ({
+        ...g,
+        timeText: `${outDateText} ${minToHHMM(g.timeMin)}`,
+      }));
+      const groupedRet = groupTimelineEvents(returnEvents).map((g) => ({
+        ...g,
+        timeText: `${retDateText} ${minToHHMM(g.timeMin)}`,
+      }));
+
+      renderOneTimeline(
+        els.outboundTimeline,
+        groupedOut,
+        '暂无事件。请先筛出可行 TopN 方案。'
+      );
+      renderOneTimeline(
+        els.returnTimeline,
+        groupedRet,
+        '暂无事件。请先筛出可行 TopN 方案。',
+        Number.isFinite(beihaiSaleMin)
+          ? ''
+          : '北海站起售时间未填写：返程第1段（北海出发）暂无法精确排序。'
+      );
+    }
+
+    function render() {
+      const params = collectParams();
+      const { plans, missingPairSet } = computePlans(params);
+      const sorted = sortPlans(plans, params);
+      const top = sorted.slice(0, params.topN);
+
+      const missingPairs = [...missingPairSet];
+      if (missingPairs.length) {
+        const text = missingPairs
+          .map((k) => {
+            const [a, b] = k.split('->');
+            const city = cityOf(a);
+            return `${city}: ${a}→${b}`;
+          })
+          .join('；');
+        els.missingAlert.style.display = 'block';
+        els.missingAlert.textContent = `你还没补充这些同城异站换乘时间：${text}`;
+      } else {
+        els.missingAlert.style.display = 'none';
+        els.missingAlert.textContent = '';
+      }
+
+      els.meta.textContent = `数据总计 ${trips.length} 条记录；当前计算中转城市：${[...state.selectedCities].join('、') || '无'}。`;
+
+      els.sTotal.textContent = sorted.length;
+      els.sTopPrice.textContent = top.length ? `¥${top[0].totalPrice.toFixed(1)}` : '-';
+      els.sTopDuration.textContent = top.length ? fmtDuration(top[0].totalDuration) : '-';
+      els.sTopArrival.textContent = top.length ? minToHHMM(top[0].arriveMin) : '-';
+
+      renderTable(top);
+      renderTimelines(top, params);
+    }
+
+    function resetDefaults() {
+      els.topN.value = 5;
+      els.earliestDepart.value = '00:00';
+      els.latestArrival.value = '23:59';
+      els.maxPrice.value = '';
+      els.maxDuration.value = '';
+      els.sameStationMin.value = 15;
+      els.outboundDate.value = '2026-05-01';
+      els.returnDate.value = '2026-05-06';
+      els.presaleDays.value = 15;
+      els.beihaiSaleTime.value = '';
+      state.selectedCities = new Set(transferCities);
+      state.transferMinutes = { ...DEFAULT_TRANSFER_MINUTES };
+      state.sortPriorities = ['duration', 'price', 'arrival', 'wait'];
+
+      document.querySelectorAll('#cityFilterList input[type="checkbox"]').forEach((cb) => {
+        cb.checked = true;
+      });
+      buildCityFilterOptions();
+      renderSortPriorityList();
+      buildTransferTimeTable();
+      render();
+    }
+
+    function bindEvents() {
+      [
+        'topN',
+        'earliestDepart',
+        'latestArrival',
+        'maxPrice',
+        'maxDuration',
+        'sameStationMin',
+        'outboundDate',
+        'returnDate',
+        'presaleDays',
+        'beihaiSaleTime',
+      ]
+        .forEach((id) => {
+          els[id].addEventListener('change', render);
+          els[id].addEventListener('input', () => {
+            if (
+              id === 'topN' ||
+              id === 'maxPrice' ||
+              id === 'maxDuration' ||
+              id === 'sameStationMin' ||
+              id === 'presaleDays' ||
+              id === 'beihaiSaleTime'
+            ) {
+              render();
+            }
+          });
+        });
+
+      els.runBtn.addEventListener('click', render);
+      els.resetBtn.addEventListener('click', resetDefaults);
+      els.citySelectAllBtn.addEventListener('click', () => {
+        state.selectedCities = new Set(transferCities);
+        buildCityFilterOptions();
+        render();
+      });
+      els.cityClearBtn.addEventListener('click', () => {
+        state.selectedCities = new Set();
+        buildCityFilterOptions();
+        render();
+      });
+      els.batchFillBtn.addEventListener('click', () => {
+        const v = Number(els.batchMin.value);
+        if (!Number.isFinite(v) || v < 0) return;
+        document.querySelectorAll('#transferTimeBody input[type="number"]').forEach((input) => {
+          if (input.value.trim() === '') {
+            input.value = String(v);
+            state.transferMinutes[input.dataset.key] = v;
+          }
+        });
+        render();
+      });
+    }
+
+    buildCityFilterOptions();
+    renderSortPriorityList();
+    buildTransferTimeTable();
+    bindEvents();
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# local source material (not for deployment)
+*.PNG
+*.JPEG
+*.JPG
+*.doc
+*.csv
+*.xlsx
+
+# macOS
+.DS_Store
