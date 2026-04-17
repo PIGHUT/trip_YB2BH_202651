@@ -816,7 +816,7 @@
           </div>
           <div class="row single">
             <div>
-              <label for="timelineNotBefore">轨道仅显示不早于</label>
+              <label for="timelineNotBefore">开售时间不早于</label>
               <input id="timelineNotBefore" type="time" value="00:00" />
             </div>
           </div>
@@ -1576,7 +1576,7 @@
       const outSaleDate = dateMinusDays(els.outboundDate.value, params.presaleDays);
       const outDateText = outSaleDate ? fmtDate(outSaleDate) : '--';
       const filterText = Number.isFinite(params.timelineNotBeforeMin)
-        ? `，过滤 ${minToHHMM(params.timelineNotBeforeMin)} 前`
+        ? `，开售时间≥ ${minToHHMM(params.timelineNotBeforeMin)}`
         : '';
       els.outboundTimelineTitle.textContent = `出发日抢票轨道（开售日：${outDateText}${filterText}）`;
 
@@ -1623,7 +1623,7 @@
         timeText: `${outDateText} ${minToHHMM(g.timeMin)}`,
       }));
       const emptyText = Number.isFinite(params.timelineNotBeforeMin)
-        ? `暂无事件。请先筛出可行 TopN 方案，或下调时间筛选（当前不早于 ${minToHHMM(params.timelineNotBeforeMin)}）。`
+        ? `暂无事件。请先筛出可行 TopN 方案，或下调开售时间筛选（当前开售时间≥ ${minToHHMM(params.timelineNotBeforeMin)}）。`
         : '暂无事件。请先筛出可行 TopN 方案。';
 
       renderOneTimeline(
