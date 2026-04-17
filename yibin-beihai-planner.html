@@ -279,6 +279,135 @@
       margin-bottom: 1px;
     }
 
+    .critical-board {
+      margin-bottom: 10px;
+      border: 1px solid #d5e4ef;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #fbfeff, #f4f9ff);
+      padding: 10px;
+    }
+
+    .critical-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .critical-head h3 {
+      margin: 0;
+      font-size: 15px;
+      color: #0d5e89;
+    }
+
+    .critical-list {
+      margin-top: 8px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .critical-item {
+      display: grid;
+      grid-template-columns: 38px 1fr;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid #ceddec;
+      border-radius: 12px;
+      padding: 8px 9px;
+      background: #f8fcff;
+      transition: transform 140ms ease, box-shadow 140ms ease;
+    }
+
+    .critical-item:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(30, 64, 175, 0.12);
+    }
+
+    .critical-rank {
+      font-size: 17px;
+      font-weight: 800;
+      color: #0f172a;
+      text-align: center;
+    }
+
+    .critical-main {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+      font-weight: 700;
+      color: #0f172a;
+      font-size: 13px;
+    }
+
+    .critical-train {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid #b6def7;
+      background: #e6f4ff;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 12px;
+      color: #0b4f75;
+      font-weight: 700;
+    }
+
+    .critical-sub {
+      margin-top: 2px;
+      font-size: 12px;
+      color: #334155;
+    }
+
+    .critical-l1 {
+      background: #f8fbff;
+      border-color: #d5e6f3;
+    }
+
+    .critical-l2 {
+      background: #fff7e0;
+      border-color: #fcd34d;
+    }
+
+    .critical-l3 {
+      background: #ffebcc;
+      border-color: #fb923c;
+    }
+
+    .critical-l4 {
+      background: #ffd8c2;
+      border-color: #f97316;
+    }
+
+    .critical-l5 {
+      background: linear-gradient(125deg, #ffe3d6, #ffd0d0);
+      border-color: #ef4444;
+      box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.22);
+    }
+
+    .critical-l5 .critical-rank {
+      color: #b91c1c;
+    }
+
+    .critical-l5 .critical-train {
+      background: #fee2e2;
+      border-color: #fca5a5;
+      color: #991b1b;
+    }
+
+    .critical-item.is-hottest {
+      animation: hotPulse 1200ms ease-in-out infinite alternate;
+    }
+
+    @keyframes hotPulse {
+      from {
+        box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2);
+      }
+      to {
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.35);
+      }
+    }
+
     .table-wrap {
       overflow: auto;
       border: 1px solid #cce0ef;
@@ -484,6 +613,14 @@
           <div class="stat"><b id="sTopPrice">-</b>Top1 总价</div>
           <div class="stat"><b id="sTopDuration">-</b>Top1 总耗时</div>
           <div class="stat"><b id="sTopArrival">-</b>Top1 到达</div>
+        </div>
+
+        <div class="critical-board">
+          <div class="critical-head">
+            <h3>关键班次榜单（实时）</h3>
+            <div class="muted" id="criticalMeta">按当前筛选自动计算</div>
+          </div>
+          <div id="criticalList" class="critical-list"></div>
         </div>
 
         <div class="table-wrap">
@@ -719,6 +856,8 @@
       sTopPrice: document.getElementById('sTopPrice'),
       sTopDuration: document.getElementById('sTopDuration'),
       sTopArrival: document.getElementById('sTopArrival'),
+      criticalMeta: document.getElementById('criticalMeta'),
+      criticalList: document.getElementById('criticalList'),
       tbody: document.getElementById('tbody'),
     };
 
@@ -969,6 +1108,90 @@
       });
     }
 
+    function computeCriticalTrains(plans) {
+      const map = new Map();
+      plans.forEach((p) => {
+        const legs = [p.leg1, p.leg2];
+        const countedInThisPlan = new Set();
+        legs.forEach((leg) => {
+          const trainNo = leg && leg.trainNo;
+          if (!trainNo || countedInThisPlan.has(trainNo)) return;
+          countedInThisPlan.add(trainNo);
+
+          if (!map.has(trainNo)) {
+            map.set(trainNo, {
+              trainNo,
+              count: 0,
+              departStation: leg.departStation || '',
+              arriveStation: leg.arriveStation || '',
+              saleTime: leg.saleTime || '',
+              saleMin: toMin(leg.saleTime),
+            });
+          }
+
+          const row = map.get(trainNo);
+          row.count += 1;
+          const currentSaleMin = toMin(leg.saleTime);
+          if (Number.isFinite(currentSaleMin)) {
+            if (!Number.isFinite(row.saleMin) || currentSaleMin < row.saleMin) {
+              row.saleMin = currentSaleMin;
+              row.saleTime = leg.saleTime;
+            }
+          }
+        });
+      });
+
+      return [...map.values()].sort((a, b) =>
+        (b.count - a.count) ||
+        ((a.saleMin ?? 1e9) - (b.saleMin ?? 1e9)) ||
+        a.trainNo.localeCompare(b.trainNo, 'zh-Hans-CN')
+      );
+    }
+
+    function renderCriticalBoard(plans, topN) {
+      els.criticalList.innerHTML = '';
+      if (!plans.length) {
+        els.criticalMeta.textContent = '当前筛选下无可行方案，无法计算关键班次。';
+        const empty = document.createElement('div');
+        empty.className = 'tl-empty';
+        empty.textContent = '先放宽筛选或补充同城异站时间后，再查看关键班次。';
+        els.criticalList.appendChild(empty);
+        return;
+      }
+
+      const stats = computeCriticalTrains(plans);
+      const visibleCount = Math.min(stats.length, Math.max(6, Number(topN) * 2));
+      const visible = stats.slice(0, visibleCount);
+      const maxCount = visible.length ? visible[0].count : 0;
+      els.criticalMeta.textContent = `基于当前筛选的 ${plans.length} 条可行方案，展示重合度最高的 ${visibleCount} 个班次。`;
+
+      visible.forEach((row, idx) => {
+        const level = Math.max(1, Math.round((row.count / Math.max(1, maxCount)) * 4) + 1);
+        const percent = ((row.count / plans.length) * 100).toFixed(0);
+        const item = document.createElement('div');
+        item.className = `critical-item critical-l${level}${idx === 0 ? ' is-hottest' : ''}`;
+
+        const left = document.createElement('div');
+        left.className = 'critical-rank';
+        left.textContent = `#${idx + 1}`;
+        item.appendChild(left);
+
+        const right = document.createElement('div');
+        const main = document.createElement('div');
+        main.className = 'critical-main';
+        main.innerHTML = `<span class="critical-train">${row.trainNo}</span><span>${row.departStation} → ${row.arriveStation}</span>`;
+        right.appendChild(main);
+
+        const sub = document.createElement('div');
+        sub.className = 'critical-sub';
+        sub.textContent = `方案重合 ${row.count} 次（覆盖 ${percent}%） · 起售 ${row.saleTime || '--'}`;
+        right.appendChild(sub);
+
+        item.appendChild(right);
+        els.criticalList.appendChild(item);
+      });
+    }
+
     function groupTimelineEvents(events) {
       const groupMap = new Map();
       for (const e of events) {
@@ -1085,6 +1308,7 @@
       els.sTopDuration.textContent = top.length ? fmtDuration(top[0].totalDuration) : '-';
       els.sTopArrival.textContent = top.length ? minToHHMM(top[0].arriveMin) : '-';
 
+      renderCriticalBoard(sorted, params.topN);
       renderTable(top);
       renderTimelines(top, params);
     }
