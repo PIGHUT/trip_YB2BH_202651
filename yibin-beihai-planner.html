@@ -344,12 +344,6 @@
       gap: 10px;
     }
 
-    @media (min-width: 900px) {
-      .timeline-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-    }
-
     .timeline {
       border: 1px solid #d9e8f5;
       border-radius: 12px;
@@ -515,18 +509,8 @@
               <input id="outboundDate" type="date" value="2026-05-01" />
             </div>
             <div>
-              <label for="returnDate">返程乘车日</label>
-              <input id="returnDate" type="date" value="2026-05-06" />
-            </div>
-          </div>
-          <div class="row">
-            <div>
               <label for="presaleDays">提前开售天数</label>
               <input id="presaleDays" type="number" min="1" value="15" />
-            </div>
-            <div>
-              <label for="beihaiSaleTime">北海站起售时间（返程首段可选）</label>
-              <input id="beihaiSaleTime" type="time" />
             </div>
           </div>
         </div>
@@ -535,10 +519,6 @@
           <div class="timeline">
             <h3 id="outboundTimelineTitle">出发日抢票轨道</h3>
             <div id="outboundTimeline"></div>
-          </div>
-          <div class="timeline">
-            <h3 id="returnTimelineTitle">返程日抢票轨道</h3>
-            <div id="returnTimeline"></div>
           </div>
         </div>
       </main>
@@ -730,13 +710,9 @@
       runBtn: document.getElementById('runBtn'),
       resetBtn: document.getElementById('resetBtn'),
       outboundDate: document.getElementById('outboundDate'),
-      returnDate: document.getElementById('returnDate'),
       presaleDays: document.getElementById('presaleDays'),
-      beihaiSaleTime: document.getElementById('beihaiSaleTime'),
       outboundTimelineTitle: document.getElementById('outboundTimelineTitle'),
-      returnTimelineTitle: document.getElementById('returnTimelineTitle'),
       outboundTimeline: document.getElementById('outboundTimeline'),
-      returnTimeline: document.getElementById('returnTimeline'),
       missingAlert: document.getElementById('missingAlert'),
       meta: document.getElementById('meta'),
       sTotal: document.getElementById('sTotal'),
@@ -1044,15 +1020,10 @@
 
     function renderTimelines(topPlans, params) {
       const outSaleDate = dateMinusDays(els.outboundDate.value, params.presaleDays);
-      const retSaleDate = dateMinusDays(els.returnDate.value, params.presaleDays);
       const outDateText = outSaleDate ? fmtDate(outSaleDate) : '--';
-      const retDateText = retSaleDate ? fmtDate(retSaleDate) : '--';
       els.outboundTimelineTitle.textContent = `出发日抢票轨道（开售日：${outDateText}）`;
-      els.returnTimelineTitle.textContent = `返程日抢票轨道（开售日：${retDateText}）`;
 
       const outboundEvents = [];
-      const returnEvents = [];
-      const beihaiSaleMin = toMin(els.beihaiSaleTime.value);
 
       topPlans.forEach((p, idx) => {
         const n = idx + 1;
@@ -1070,16 +1041,6 @@
             timeMin: sale2,
             label: `方案#${n} 第2段：${p.leg2.departStation}→${p.leg2.arriveStation}（${p.leg2.trainNo}）`,
           });
-          returnEvents.push({
-            timeMin: sale2,
-            label: `方案#${n} 返程第2段：${p.leg2.departStation}→宜宾（中转段优先）`,
-          });
-        }
-        if (Number.isFinite(beihaiSaleMin)) {
-          returnEvents.push({
-            timeMin: beihaiSaleMin,
-            label: `方案#${n} 返程第1段：北海→${p.transferCity}（需按实际车次确认）`,
-          });
         }
       });
 
@@ -1087,23 +1048,11 @@
         ...g,
         timeText: `${outDateText} ${minToHHMM(g.timeMin)}`,
       }));
-      const groupedRet = groupTimelineEvents(returnEvents).map((g) => ({
-        ...g,
-        timeText: `${retDateText} ${minToHHMM(g.timeMin)}`,
-      }));
 
       renderOneTimeline(
         els.outboundTimeline,
         groupedOut,
         '暂无事件。请先筛出可行 TopN 方案。'
-      );
-      renderOneTimeline(
-        els.returnTimeline,
-        groupedRet,
-        '暂无事件。请先筛出可行 TopN 方案。',
-        Number.isFinite(beihaiSaleMin)
-          ? ''
-          : '北海站起售时间未填写：返程第1段（北海出发）暂无法精确排序。'
       );
     }
 
@@ -1148,9 +1097,7 @@
       els.maxDuration.value = '';
       els.sameStationMin.value = 15;
       els.outboundDate.value = '2026-05-01';
-      els.returnDate.value = '2026-05-06';
       els.presaleDays.value = 15;
-      els.beihaiSaleTime.value = '';
       state.selectedCities = new Set(transferCities);
       state.transferMinutes = { ...DEFAULT_TRANSFER_MINUTES };
       state.sortPriorities = ['duration', 'price', 'arrival', 'wait'];
@@ -1173,9 +1120,7 @@
         'maxDuration',
         'sameStationMin',
         'outboundDate',
-        'returnDate',
         'presaleDays',
-        'beihaiSaleTime',
       ]
         .forEach((id) => {
           els[id].addEventListener('change', render);
@@ -1185,8 +1130,7 @@
               id === 'maxPrice' ||
               id === 'maxDuration' ||
               id === 'sameStationMin' ||
-              id === 'presaleDays' ||
-              id === 'beihaiSaleTime'
+              id === 'presaleDays'
             ) {
               render();
             }
