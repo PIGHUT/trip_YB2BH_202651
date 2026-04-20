@@ -1,0 +1,13 @@
+{
+  "name": "trip-yb2bh",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "crawl:12306": "node tools/fetch_12306_trips.mjs",
+    "crawl:12306:pw": "node tools/fetch_12306_trips_playwright.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.59.1"
+  }
+}

@@ -25,3 +25,19 @@
 备注：
 - 若 12306 风控导致价格接口不返回，脚本会用 `defaultPrice`（默认 9999）兜底并在备注中标记。
 - 起售时间使用配置中的 `saleTimeByStation` 填充（因为公开车次接口不稳定返回起售时间）。
+
+## Playwright 返程抓取（推荐）
+当接口直连被风控时，优先用 Playwright 版本（更接近人工浏览器访问）：
+
+1. 准备配置：
+`cp tools/return-config.playwright.example.json tools/return-config.playwright.json`
+2. 运行：
+`npm run crawl:12306:pw -- --config tools/return-config.playwright.json`
+3. 浏览器会自动打开 12306；你手动完成登录/验证后，回终端按回车，脚本继续抓取并导出。
+
+补充：
+- 首次需要安装依赖和浏览器：
+`npm install`
+`npx playwright install chromium`
+- 也可以显式传参：
+`node tools/fetch_12306_trips_playwright.mjs --config tools/return-config.playwright.json --date 2026-05-06 --output ./beihai-yibin-return-data.js`
