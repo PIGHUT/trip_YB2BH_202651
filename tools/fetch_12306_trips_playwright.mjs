@@ -6,7 +6,6 @@ import readline from 'node:readline';
 import { chromium } from 'playwright';
 
 const DEFAULT_BASE_URL = 'https://kyfw.12306.cn';
-const LEFT_TICKET_PATHS = ['queryG', 'query'];
 
 function parseArgs(argv) {
   const args = {};
@@ -156,32 +155,56 @@ function parseMaybeJson(text) {
   }
 }
 
-async function queryLeftTickets(request, baseUrl, date, fromCode, toCode, purposeCodes) {
-  let sawBlockedLike = false;
-  for (const pathName of LEFT_TICKET_PATHS) {
-    const url = new URL(`${baseUrl}/otn/leftTicket/${pathName}`);
-    url.searchParams.set('leftTicketDTO.train_date', date);
-    url.searchParams.set('leftTicketDTO.from_station', fromCode);
-    url.searchParams.set('leftTicketDTO.to_station', toCode);
-    url.searchParams.set('purpose_codes', purposeCodes);
-    const res = await request.get(url.toString());
-    const text = await res.text();
-    const json = parseMaybeJson(text);
-    if (json && json.status && json.data && Array.isArray(json.data.result)) {
-      return { resultRows: json.data.result, blocked: false };
-    }
-    const compact = String(text || '').trim().toLowerCase();
-    const looksLikeHtml = compact.startsWith('<!doctype html') || compact.startsWith('<html');
-    if (
-      text.includes('mormhweb/logFiles/error.html') ||
-      looksLikeHtml ||
-      (json && json.messages && String(json.messages).includes('error'))
-    ) {
-      sawBlockedLike = true;
-      continue;
-    }
+async function setQueryFormFields(page, date, fromName, fromCode, toName, toCode) {
+  await page.evaluate(({ date, fromName, fromCode, toName, toCode }) => {
+    const fromText = document.querySelector('#fromStationText');
+    const fromCodeInput = document.querySelector('#fromStation');
+    const toText = document.querySelector('#toStationText');
+    const toCodeInput = document.querySelector('#toStation');
+    const dateInput = document.querySelector('#train_date');
+
+    if (fromText) fromText.value = fromName;
+    if (fromCodeInput) fromCodeInput.value = fromCode;
+    if (toText) toText.value = toName;
+    if (toCodeInput) toCodeInput.value = toCode;
+    if (dateInput) dateInput.value = date;
+  }, { date, fromName, fromCode, toName, toCode });
+}
+
+async function queryLeftTicketsViaPage(page, date, fromName, fromCode, toName, toCode, purposeCodes) {
+  await setQueryFormFields(page, date, fromName, fromCode, toName, toCode);
+
+  const responsePromise = page.waitForResponse((resp) => {
+    const u = resp.url();
+    if (!/\/otn\/leftTicket\/(query|queryG)\?/.test(u)) return false;
+    if (!u.includes(`leftTicketDTO.train_date=${encodeURIComponent(date)}`)) return false;
+    if (!u.includes(`leftTicketDTO.from_station=${encodeURIComponent(fromCode)}`)) return false;
+    if (!u.includes(`leftTicketDTO.to_station=${encodeURIComponent(toCode)}`)) return false;
+    if (purposeCodes && !u.includes(`purpose_codes=${encodeURIComponent(purposeCodes)}`)) return false;
+    return true;
+  }, { timeout: 25000 }).catch(() => null);
+
+  await page.click('#query_ticket');
+  const res = await responsePromise;
+  if (!res) {
+    return { resultRows: [], blocked: true };
   }
-  if (sawBlockedLike) return { resultRows: [], blocked: true };
+
+  const text = await res.text();
+  const json = parseMaybeJson(text);
+  if (json && json.status && json.data && Array.isArray(json.data.result)) {
+    return { resultRows: json.data.result, blocked: false };
+  }
+
+  const compact = String(text || '').trim().toLowerCase();
+  const looksLikeHtml = compact.startsWith('<!doctype html') || compact.startsWith('<html');
+  if (
+    text.includes('mormhweb/logFiles/error.html') ||
+    looksLikeHtml ||
+    (json && json.messages && String(json.messages).includes('error'))
+  ) {
+    return { resultRows: [], blocked: true };
+  }
   return { resultRows: [], blocked: false };
 }
 
@@ -288,8 +311,8 @@ async function main() {
   await page.goto(warmupUrl, { waitUntil: 'domcontentloaded' });
 
   if (!headless) {
-    console.log('\n已打开 12306 页面。请在浏览器中完成：登录 + 验证（若有）+ 进入车票查询页。');
-    await promptEnter('完成后回到终端按回车继续抓取...');
+    console.log('\n已打开 12306 页面。可先手动登录/验证（建议），再回终端按回车开始抓取。');
+    await promptEnter('准备好后按回车继续...');
   }
 
   const request = context.request;
@@ -305,13 +328,14 @@ async function main() {
       continue;
     }
 
-    const { resultRows, blocked } = await queryLeftTickets(
-      request,
-      baseUrl,
+    const { resultRows, blocked } = await queryLeftTicketsViaPage(
+      page,
       date,
+      pair.from,
       fromCode,
+      pair.to,
       toCode,
-      purposeCodes
+      purposeCodes,
     );
     if (blocked) blockedPairCount += 1;
     const tickets = parseLeftTicketRows(resultRows, codeToName);
