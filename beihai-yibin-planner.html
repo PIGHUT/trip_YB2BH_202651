@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>宜宾 → 北海 五一换乘规划器</title>
+  <title>北海 → 宜宾 返程换乘规划器</title>
   <style>
     :root {
       --bg-1: #f5fbff;
@@ -704,14 +704,14 @@
 <body>
   <div class="shell">
     <section class="hero">
-      <h1>宜宾 → 北海 五一换乘规划器</h1>
+      <h1>北海 → 宜宾 返程换乘规划器</h1>
       <p>基于你提供的 12306 截图 + 夸克 OCR 对照结果，支持按最便宜、总耗时最短、到达最早筛选 TopN 方案。</p>
     </section>
 
     <div class="grid">
       <aside class="card">
         <h2>筛选设置</h2>
-        <div class="muted">当前逻辑：仅计算 1 次换乘（宜宾 → 中转城市 → 北海）。</div>
+        <div class="muted">当前逻辑：仅计算 1 次换乘（北海 → 中转城市 → 宜宾）。</div>
 
         <div class="row single">
           <div>
@@ -806,8 +806,8 @@
         <div class="timeline-tools">
           <div class="row">
             <div>
-              <label for="outboundDate">出发乘车日</label>
-              <input id="outboundDate" type="date" value="2026-05-01" />
+              <label for="outboundDate">返程乘车日</label>
+              <input id="outboundDate" type="date" value="2026-05-05" />
             </div>
             <div>
               <label for="presaleDays">提前开售天数</label>
@@ -824,7 +824,7 @@
 
         <div class="timeline-grid">
           <div class="timeline">
-            <h3 id="outboundTimelineTitle">出发日抢票轨道</h3>
+            <h3 id="outboundTimelineTitle">返程日抢票轨道</h3>
             <div id="outboundTimeline"></div>
           </div>
         </div>
@@ -869,9 +869,9 @@
     </section>
   </div>
 
-  <script src="./yibin-beihai-data.js"></script>
+  <script src="./beihai-yibin-return-data.js"></script>
   <script>
-    const raw = (window.YIBIN_BEIHAI_DATA && window.YIBIN_BEIHAI_DATA.trips) || [];
+    const raw = (window.BEIHAI_YIBIN_RETURN_DATA && window.BEIHAI_YIBIN_RETURN_DATA.trips) || [];
 
     const toMin = (hhmm) => {
       if (!hhmm || typeof hhmm !== 'string') return null;
@@ -943,7 +943,11 @@
       arriveMin: toMin(r['到达时间']),
       departCity: cityOf(r['出发站点']),
       arriveCity: cityOf(r['到达站点']),
-    })).filter((r) => Number.isFinite(r.departMin) && Number.isFinite(r.arriveMin));
+    })).filter((r) =>
+      Number.isFinite(r.departMin) &&
+      Number.isFinite(r.arriveMin) &&
+      !(r.departCity === '宜宾' && r.arriveCity === '成都')
+    );
 
     const DEFAULT_TRANSFER_MINUTES = {
       '南宁东->南宁': 66,
@@ -965,8 +969,8 @@
       wait: '换乘等待最短',
     };
 
-    const leg1 = trips.filter((r) => r.departCity === '宜宾' && r.arriveCity !== '北海');
-    const leg2 = trips.filter((r) => r.arriveCity === '北海');
+    const leg1 = trips.filter((r) => r.departCity === '北海' && r.arriveCity !== '宜宾');
+    const leg2 = trips.filter((r) => r.arriveCity === '宜宾');
 
     const leg2ByCity = new Map();
     for (const t of leg2) {
@@ -1319,8 +1323,8 @@
           <td>¥${p.totalPrice.toFixed(1)}</td>
           <td>${fmtDuration(p.totalDuration)}</td>
           <td>
-            <div><b>${p.leg1.departTime}</b> 宜宾出发</div>
-            <div><b>${p.leg2.arriveTime}</b> 北海到达</div>
+            <div><b>${p.leg1.departTime}</b> 北海出发</div>
+            <div><b>${p.leg2.arriveTime}</b> 宜宾到达</div>
           </td>
           <td>
             <span class="badge">${p.transferType}</span>
@@ -1597,7 +1601,7 @@
       const filterText = Number.isFinite(params.timelineNotBeforeMin)
         ? `，开售时间≥ ${minToHHMM(params.timelineNotBeforeMin)}`
         : '';
-      els.outboundTimelineTitle.textContent = `出发日抢票轨道（开售日：${outDateText}${filterText}）`;
+      els.outboundTimelineTitle.textContent = `返程日抢票轨道（开售日：${outDateText}${filterText}）`;
 
       const outboundEvents = [];
 
@@ -1695,7 +1699,7 @@
       els.maxPrice.value = '';
       els.maxDuration.value = '';
       els.sameStationMin.value = 15;
-      els.outboundDate.value = '2026-05-01';
+      els.outboundDate.value = '2026-05-05';
       els.presaleDays.value = 14;
       els.timelineNotBefore.value = '00:00';
       state.selectedCities = new Set(transferCities);

@@ -953,6 +953,8 @@
       '桂林西->桂林北': 80,
       '桂林西->桂林': 103,
       '桂林北->桂林': 80,
+      '贵阳东->贵阳北': 77,
+      '贵阳东->贵阳': 70,
     };
 
     const SORT_METRICS = ['duration', 'price', 'arrival', 'wait'];
@@ -1002,9 +1004,26 @@
       x.toStation.localeCompare(y.toStation, 'zh-Hans-CN')
     );
 
+    const NO_REVERSE_AUTO_FILL_STATIONS = new Set(['南宁西']);
+    const buildInitialTransferMinutes = () => {
+      const seeded = { ...DEFAULT_TRANSFER_MINUTES };
+      transferPairs.forEach((p) => {
+        if (seeded[p.key] != null) return;
+        if (
+          NO_REVERSE_AUTO_FILL_STATIONS.has(p.fromStation) ||
+          NO_REVERSE_AUTO_FILL_STATIONS.has(p.toStation)
+        ) return;
+        const reverseKey = `${p.toStation}->${p.fromStation}`;
+        const reverseValue = seeded[reverseKey];
+        if (Number.isFinite(reverseValue)) seeded[p.key] = reverseValue;
+      });
+      return seeded;
+    };
+    const INITIAL_TRANSFER_MINUTES = buildInitialTransferMinutes();
+
     const state = {
       selectedCities: new Set(transferCities),
-      transferMinutes: { ...DEFAULT_TRANSFER_MINUTES },
+      transferMinutes: { ...INITIAL_TRANSFER_MINUTES },
       sortPriorities: ['duration', 'price', 'arrival', 'wait'],
     };
 
@@ -1680,7 +1699,7 @@
       els.presaleDays.value = 14;
       els.timelineNotBefore.value = '00:00';
       state.selectedCities = new Set(transferCities);
-      state.transferMinutes = { ...DEFAULT_TRANSFER_MINUTES };
+      state.transferMinutes = { ...INITIAL_TRANSFER_MINUTES };
       state.sortPriorities = ['duration', 'price', 'arrival', 'wait'];
 
       document.querySelectorAll('#cityFilterList input[type="checkbox"]').forEach((cb) => {

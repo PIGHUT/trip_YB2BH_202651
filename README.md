@@ -8,7 +8,8 @@
 - 出发日抢票时间轨道
 
 ## 本地打开
-直接打开 `index.html` 即可。
+- 去程（宜宾→北海）：打开 `index.html`
+- 返程（北海→宜宾）：打开 `beihai-yibin-planner.html`
 
 ## Vercel
 这是纯静态页面，导入仓库后直接部署即可。

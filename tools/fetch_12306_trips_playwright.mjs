@@ -34,6 +34,8 @@ function usage() {
     '  --output 导出路径',
     '  --var    window 变量名',
     '  --headless true|false（默认 false）',
+    '  --start  从第几条线路开始抓（0起）',
+    '  --count  本次最多抓多少条线路',
   ].join('\n');
 }
 
@@ -155,6 +157,10 @@ function parseMaybeJson(text) {
   }
 }
 
+async function sleep(page, ms) {
+  await page.waitForTimeout(Math.max(0, Number(ms) || 0));
+}
+
 async function setQueryFormFields(page, date, fromName, fromCode, toName, toCode) {
   await page.evaluate(({ date, fromName, fromCode, toName, toCode }) => {
     const fromText = document.querySelector('#fromStationText');
@@ -171,41 +177,105 @@ async function setQueryFormFields(page, date, fromName, fromCode, toName, toCode
   }, { date, fromName, fromCode, toName, toCode });
 }
 
-async function queryLeftTicketsViaPage(page, date, fromName, fromCode, toName, toCode, purposeCodes) {
-  await setQueryFormFields(page, date, fromName, fromCode, toName, toCode);
+async function ensureQueryPageReady(page, warmupUrl) {
+  const hasQueryButton = await page.locator('#query_ticket').count().catch(() => 0);
+  if (hasQueryButton > 0) return;
 
-  const responsePromise = page.waitForResponse((resp) => {
-    const u = resp.url();
-    if (!/\/otn\/leftTicket\/(query|queryG)\?/.test(u)) return false;
-    if (!u.includes(`leftTicketDTO.train_date=${encodeURIComponent(date)}`)) return false;
-    if (!u.includes(`leftTicketDTO.from_station=${encodeURIComponent(fromCode)}`)) return false;
-    if (!u.includes(`leftTicketDTO.to_station=${encodeURIComponent(toCode)}`)) return false;
-    if (purposeCodes && !u.includes(`purpose_codes=${encodeURIComponent(purposeCodes)}`)) return false;
-    return true;
-  }, { timeout: 25000 }).catch(() => null);
+  await page.goto(warmupUrl, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#query_ticket', { timeout: 15000 });
+  await page.waitForSelector('#fromStationText', { timeout: 15000 });
+  await page.waitForSelector('#toStationText', { timeout: 15000 });
+  await page.waitForSelector('#fromStation', { timeout: 15000, state: 'attached' });
+  await page.waitForSelector('#toStation', { timeout: 15000, state: 'attached' });
+  await page.waitForSelector('#train_date', { timeout: 15000 });
+}
 
-  await page.click('#query_ticket');
-  const res = await responsePromise;
-  if (!res) {
-    return { resultRows: [], blocked: true };
+async function queryLeftTicketsViaPage(
+  page,
+  date,
+  fromName,
+  fromCode,
+  toName,
+  toCode,
+  purposeCodes,
+  warmupUrl,
+  retryCount,
+  retryBackoffMs,
+) {
+  for (let attempt = 1; attempt <= retryCount; attempt += 1) {
+    await ensureQueryPageReady(page, warmupUrl);
+    await setQueryFormFields(page, date, fromName, fromCode, toName, toCode);
+    await sleep(page, 350 + Math.floor(Math.random() * 500));
+
+    const responsePromise = page.waitForResponse((resp) => {
+      const u = resp.url();
+      if (!/\/otn\/leftTicket\/(query|queryG)\?/.test(u)) return false;
+      if (!u.includes(`leftTicketDTO.train_date=${encodeURIComponent(date)}`)) return false;
+      if (!u.includes(`leftTicketDTO.from_station=${encodeURIComponent(fromCode)}`)) return false;
+      if (!u.includes(`leftTicketDTO.to_station=${encodeURIComponent(toCode)}`)) return false;
+      if (purposeCodes && !u.includes(`purpose_codes=${encodeURIComponent(purposeCodes)}`)) return false;
+      return true;
+    }, { timeout: 25000 }).catch(() => null);
+
+    try {
+      await page.click('#query_ticket', { timeout: 12000 });
+    } catch (err) {
+      if (attempt < retryCount) {
+        await sleep(page, retryBackoffMs * attempt);
+        continue;
+      }
+      throw new Error(`无法点击查询按钮（当前URL: ${page.url()}）`);
+    }
+
+    const res = await responsePromise;
+    if (!res) {
+      if (attempt < retryCount) {
+        await sleep(page, retryBackoffMs * attempt);
+        continue;
+      }
+      return { resultRows: [], blocked: true };
+    }
+
+    const status = res.status();
+    if (status >= 300 && status < 400) {
+      if (attempt < retryCount) {
+        await sleep(page, retryBackoffMs * attempt);
+        continue;
+      }
+      return { resultRows: [], blocked: true };
+    }
+
+    let text = '';
+    try {
+      text = await res.text();
+    } catch {
+      if (attempt < retryCount) {
+        await sleep(page, retryBackoffMs * attempt);
+        continue;
+      }
+      return { resultRows: [], blocked: true };
+    }
+    const json = parseMaybeJson(text);
+    if (json && json.status && json.data && Array.isArray(json.data.result)) {
+      return { resultRows: json.data.result, blocked: false };
+    }
+
+    const compact = String(text || '').trim().toLowerCase();
+    const looksLikeHtml = compact.startsWith('<!doctype html') || compact.startsWith('<html');
+    if (
+      text.includes('mormhweb/logFiles/error.html') ||
+      looksLikeHtml ||
+      (json && json.messages && String(json.messages).includes('error'))
+    ) {
+      if (attempt < retryCount) {
+        await sleep(page, retryBackoffMs * attempt);
+        continue;
+      }
+      return { resultRows: [], blocked: true };
+    }
+    return { resultRows: [], blocked: false };
   }
-
-  const text = await res.text();
-  const json = parseMaybeJson(text);
-  if (json && json.status && json.data && Array.isArray(json.data.result)) {
-    return { resultRows: json.data.result, blocked: false };
-  }
-
-  const compact = String(text || '').trim().toLowerCase();
-  const looksLikeHtml = compact.startsWith('<!doctype html') || compact.startsWith('<html');
-  if (
-    text.includes('mormhweb/logFiles/error.html') ||
-    looksLikeHtml ||
-    (json && json.messages && String(json.messages).includes('error'))
-  ) {
-    return { resultRows: [], blocked: true };
-  }
-  return { resultRows: [], blocked: false };
+  return { resultRows: [], blocked: true };
 }
 
 async function queryBestPrice(request, baseUrl, ticket, date) {
@@ -217,7 +287,15 @@ async function queryBestPrice(request, baseUrl, ticket, date) {
   url.searchParams.set('train_date', date);
   try {
     const res = await request.get(url.toString());
-    const json = parseMaybeJson(await res.text());
+    const status = res.status();
+    if (status >= 300 && status < 400) return null;
+    let body = '';
+    try {
+      body = await res.text();
+    } catch {
+      return null;
+    }
+    const json = parseMaybeJson(body);
     return chooseBestPrice(json && json.data);
   } catch {
     return null;
@@ -271,6 +349,13 @@ function parseBool(v, defaultValue) {
   return defaultValue;
 }
 
+function parseNonNegativeInt(v, fallback) {
+  if (v == null || v === '') return fallback;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(0, Math.floor(n));
+}
+
 async function main() {
   const args = parseArgs(process.argv);
   if (args.help || args.h || !args.config) {
@@ -294,12 +379,25 @@ async function main() {
   const saleTimeByStation = config.saleTimeByStation && typeof config.saleTimeByStation === 'object'
     ? config.saleTimeByStation
     : {};
-  const pairs = normalizePairs(config.pairs);
+  const allPairs = normalizePairs(config.pairs);
+  const pairStart = parseNonNegativeInt(args.start, parseNonNegativeInt(config.start, 0));
+  const pairCount = parseNonNegativeInt(args.count, parseNonNegativeInt(config.count, 0));
+  const pairs = pairCount > 0
+    ? allPairs.slice(pairStart, pairStart + pairCount)
+    : allPairs.slice(pairStart);
   const headless = parseBool(args.headless ?? config.headless, false);
   const warmupUrl = `${baseUrl}/otn/leftTicket/init?linktypeid=dc`;
+  const pairIntervalMs = Number.isFinite(Number(config.pairIntervalMs)) ? Number(config.pairIntervalMs) : 1800;
+  const retryCount = Number.isFinite(Number(config.retryCount)) ? Math.max(1, Number(config.retryCount)) : 3;
+  const retryBackoffMs = Number.isFinite(Number(config.retryBackoffMs))
+    ? Math.max(500, Number(config.retryBackoffMs))
+    : 2500;
 
   if (!date) throw new Error('缺少 date，请在 config 或 --date 里提供，例如 2026-05-06');
-  if (!pairs.length) throw new Error('缺少 pairs，请在 config 中配置抓取线路');
+  if (!allPairs.length) throw new Error('缺少 pairs，请在 config 中配置抓取线路');
+  if (!pairs.length) {
+    throw new Error(`分批参数后无可抓线路：start=${pairStart}, count=${pairCount || 'ALL'}, total=${allPairs.length}`);
+  }
 
   const browser = await chromium.launch({ headless });
   const context = await browser.newContext({
@@ -315,10 +413,13 @@ async function main() {
     await promptEnter('准备好后按回车继续...');
   }
 
+  await ensureQueryPageReady(page, warmupUrl);
+
   const request = context.request;
   const { nameToCode, codeToName } = await loadStationMapsWithContext(request, baseUrl);
   const allTrips = [];
   let blockedPairCount = 0;
+  console.log(`[info] 本次抓取线路: ${pairs.length} 条（总线路 ${allPairs.length}，start=${pairStart}，count=${pairCount || 'ALL'}）`);
 
   for (const pair of pairs) {
     const fromCode = nameToCode.get(pair.from);
@@ -336,6 +437,9 @@ async function main() {
       pair.to,
       toCode,
       purposeCodes,
+      warmupUrl,
+      retryCount,
+      retryBackoffMs,
     );
     if (blocked) blockedPairCount += 1;
     const tickets = parseLeftTicketRows(resultRows, codeToName);
@@ -348,6 +452,7 @@ async function main() {
       allTrips.push(buildTripRecord(ticket, pair, saleTimeByStation, bestPrice, defaultPrice));
       await new Promise((r) => setTimeout(r, 80));
     }
+    await sleep(page, pairIntervalMs);
   }
 
   const deduped = dedupeTrips(allTrips).sort((a, b) =>
